@@ -99,6 +99,12 @@ func Serve(config *ServerConfig) {
 	}
 	socketManager.RegisterHandler("delete", &deleteHandler)
 
+	choicesForHandler := ChoicesForQuery{
+		Model: model,
+		Bath:  parser.Bath,
+	}
+	socketManager.RegisterHandler("getChoicesFor", &choicesForHandler)
+
 	customHandler := CustomQuery{
 		Model: model,
 		Bath:  parser.Bath,

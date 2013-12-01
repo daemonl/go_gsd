@@ -4,11 +4,13 @@ import (
 	"github.com/daemonl/go_lib/databath"
 	"log"
 	"net/http"
+	"regexp"
 )
 
 type Parser struct {
-	Store *SessionStore
-	Bath  *databath.Bath
+	Store          *SessionStore
+	Bath           *databath.Bath
+	PublicPatterns []*regexp.Regexp
 }
 
 type Request struct {
@@ -22,30 +24,46 @@ type Request struct {
 func (r *Request) GetWriter() http.ResponseWriter {
 	return r.writer
 }
+func (r *Request) GetRaw() (http.ResponseWriter, *http.Request) {
+	return r.writer, r.raw
+}
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
 func (parser *Parser) WrapReturn(handler func(*Request)) func(w http.ResponseWriter, r *http.Request) *Request {
 	return func(w http.ResponseWriter, r *http.Request) *Request {
+
 		requestTorch, err := parser.ParseRequest(w, r)
 		if err != nil {
 			log.Fatal(err)
 			w.Write([]byte("An error occurred"))
 			return nil
 		}
-		handler(requestTorch)
+		if requestTorch.Session.User == nil {
+			log.Println("NOT LOGGED IN")
+			log.Printf("Check Path %s", r.URL.Path)
+			for _, p := range parser.PublicPatterns {
+				log.Println(p.String())
+				if p.MatchString(r.URL.Path) {
+					log.Printf("Matched Public Path %s", p.String())
+					handler(requestTorch)
+					return requestTorch
+				}
+			}
+			log.Println("No Public Pathes Matched")
+			requestTorch.Redirect("/login")
+		} else {
+			handler(requestTorch)
+		}
 		return requestTorch
 	}
 }
 
 func (parser *Parser) Wrap(handler func(*Request)) func(w http.ResponseWriter, r *http.Request) {
+	f := parser.WrapReturn(handler)
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		requestTorch, err := parser.ParseRequest(w, r)
-		if err != nil {
-			log.Fatal(err)
-			w.Write([]byte("An error occurred"))
-			return
-		}
-		handler(requestTorch)
+		_ = f(w, r)
+		return
 	}
 }
 

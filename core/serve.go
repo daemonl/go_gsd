@@ -1,9 +1,12 @@
 package core
 
 import (
+	"fmt"
+	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/pdf"
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/view"
 	"github.com/daemonl/go_lib/databath"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
@@ -50,11 +53,18 @@ type ServerConfig struct {
 	WebRoot           string                `json:"webRoot"`
 	BindAddress       string                `json:"bindAddress"`
 	PublicPatternsRaw []string              `json:"publicPatterns"`
+
+	EmailConfig *email.EmailHandlerConfig
+	EmailFile   *string           `json:"emailFile"`
+	SmtpConfig  *email.SmtpConfig `json:"smtpConfig"`
+
+	PdfConfig *pdf.PdfHandlerConfig
+	PdfFile   *string `json:"pdfFile"`
+	PdfBinary *string `json:"pdfBinary"`
 }
 
 func Serve(config *ServerConfig) {
 
-	log.Println(config)
 	parser := torch.Parser{
 		Store:          torch.InMemorySessionStore(),
 		Bath:           databath.RunABath(config.Database.Driver, config.Database.DataSourceName, config.Database.PoolSize),
@@ -66,11 +76,17 @@ func Serve(config *ServerConfig) {
 		parser.PublicPatterns[i] = reg
 	}
 
-	viewManager := GetViewManager(config.TemplateRoot)
+	viewManager := view.GetViewManager(config.TemplateRoot)
 
 	model, err := databath.ReadModelFromFile(config.ModelFile)
 	if err != nil {
 		panic("COULD NOT READ MODEL :" + err.Error())
+	}
+
+	templateWriter := view.TemplateWriter{
+		Bath:        parser.Bath,
+		Model:       model,
+		ViewManager: viewManager,
 	}
 
 	socketManager := socket.GetManager(parser.Store)
@@ -111,24 +127,35 @@ func Serve(config *ServerConfig) {
 	}
 	socketManager.RegisterHandler("custom", &customHandler)
 
-	loginViewHandler := ViewHandler{
+	loginViewHandler := view.ViewHandler{
 		Manager:      viewManager,
 		TemplateName: "login.html",
 		Data:         nil,
 	}
 
-	signupViewHandler := ViewHandler{
+	signupViewHandler := view.ViewHandler{
 		Manager:      viewManager,
 		TemplateName: "signup.html",
 		Data:         nil,
 	}
 
+	fmt.Println(config.EmailConfig)
+	emailHandler, err := email.GetEmailHandler(config.SmtpConfig, config.EmailConfig, &templateWriter)
+	if err != nil {
+		log.Panic(err)
+	}
+	pdfHandler, err := pdf.GetPdfHandler(*config.PdfBinary, config.PdfConfig, &templateWriter)
 	fallthroughHandler := GetFallthroughHandler(config)
 
 	http.HandleFunc("/check", parser.Wrap(checkHandle))
 	http.HandleFunc("/login", parser.WrapSplit(loginViewHandler.Handle, torch.HandleLogin))
 	http.HandleFunc("/signup", parser.WrapSplit(signupViewHandler.Handle, signupHandle))
-	http.HandleFunc("/pdf", parser.Wrap(pdfHandle))
+
+	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
+	http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
+
+	http.HandleFunc("/emailpreview/", parser.Wrap(emailHandler.Preview))
+	http.HandleFunc("/sendmail/", parser.Wrap(emailHandler.Send))
 	http.Handle("/socket", socketManager.GetListener())
 	http.HandleFunc("/", parser.Wrap(fallthroughHandler.Handle))
 

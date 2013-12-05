@@ -20,6 +20,5 @@ func GetFallthroughHandler(config *ServerConfig) *FallthroughHandler {
 
 }
 func (h *FallthroughHandler) Handle(requestTorch *torch.Request) {
-	// if authenticated then
 	h.fsHandler.ServeHTTP(requestTorch.GetRaw())
 }

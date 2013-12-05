@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/daemonl/go_gsd/email"
+	"github.com/daemonl/go_gsd/pdf"
 	"io"
+	"log"
 	"os"
 )
 
@@ -34,21 +37,55 @@ func init() {
 	flag.StringVar(&configFilename, "config", wd+"/config.json", "Use Thusly")
 }
 
+func fileNameToObject(filename string, object interface{}) error {
+	log.Println("LOAD OBJECT " + filename)
+	jsonFile, err := os.Open(filename)
+	defer jsonFile.Close()
+	if err != nil {
+		return err
+	}
+
+	decoder := json.NewDecoder(jsonFile)
+	err = decoder.Decode(object)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ParseCLI() *ServerConfig {
 	flag.Parse()
 	fmt.Println(configFilename)
-	configFile, err := os.Open(configFilename)
-	if err != nil {
-		panic("Could Not Read Config File: " + err.Error())
-	}
 
 	var config ServerConfig
-
-	decoder := json.NewDecoder(configFile)
-	err = decoder.Decode(&config)
+	err := fileNameToObject(configFilename, &config)
 	if err != nil {
-		panic("Could Not Decode Config File: " + err.Error())
+		panic("Could not load config, Aborting: " + err.Error())
 	}
-	configFile.Close()
+
+	if config.EmailFile != nil {
+		fmt.Println("LOADING EMAIL CONFIG", *config.EmailFile)
+		var ec email.EmailHandlerConfig
+		//ec1 := make(map[string]interface{})
+		err := fileNameToObject(*config.EmailFile, &ec)
+		if err != nil {
+			panic("Could not load config, Aborting: " + err.Error())
+		}
+		fmt.Println(ec)
+		config.EmailConfig = &ec
+	}
+	if config.PdfFile != nil {
+		fmt.Println("LOADING PDF CONFIG", *config.EmailFile)
+		var ec pdf.PdfHandlerConfig
+		//ec1 := make(map[string]interface{})
+		err := fileNameToObject(*config.PdfFile, &ec)
+		if err != nil {
+			panic("Could not load config, Aborting: " + err.Error())
+		}
+		fmt.Println(ec)
+		config.PdfConfig = &ec
+	}
 	return &config
 }

@@ -8,6 +8,7 @@ type User struct {
 	Id       uint64 `json:"id"`
 	Username string `json:"username"`
 	Password string `json:""`
+	Access   string `json:"access"`
 }
 
 func HandleLogin(requestTorch *Request) {
@@ -17,7 +18,7 @@ func HandleLogin(requestTorch *Request) {
 
 	db := requestTorch.DbConn.GetDB()
 
-	rows, err := db.Query(`SELECT id, username, password FROM staff WHERE username = ?`, username)
+	rows, err := db.Query(`SELECT id, username, password, access FROM staff WHERE username = ?`, username)
 	if err != nil {
 		panic(err)
 		log.Fatal(err)
@@ -33,7 +34,7 @@ func HandleLogin(requestTorch *Request) {
 	}
 
 	user := User{}
-	err = rows.Scan(&user.Id, &user.Username, &user.Password)
+	err = rows.Scan(&user.Id, &user.Username, &user.Password, &user.Access)
 	if err != nil {
 		log.Println("Error on retrieve user from database")
 		log.Println(err.Error())

@@ -1,10 +1,16 @@
 package torch
 
 import (
+	"errors"
+	"fmt"
 	"github.com/daemonl/go_lib/databath"
 	"log"
 	"net/http"
+
 	"regexp"
+	"strings"
+
+	"strconv"
 )
 
 type Parser struct {
@@ -26,6 +32,31 @@ func (r *Request) GetWriter() http.ResponseWriter {
 }
 func (r *Request) GetRaw() (http.ResponseWriter, *http.Request) {
 	return r.writer, r.raw
+}
+func (r *Request) UrlMatch(dest ...interface{}) error {
+	urlParts := strings.Split(r.raw.URL.Path[1:], "/")
+	if len(urlParts) != len(dest) {
+		fmt.Println(urlParts)
+		return errors.New(fmt.Sprintf("URL had %d parameters, expected %d", len(urlParts), len(dest)))
+	}
+	for i, src := range urlParts {
+		dst := dest[i]
+		switch t := dst.(type) {
+		case *string:
+			*t = src
+		case *uint64:
+			srcInt, err := strconv.ParseUint(src, 10, 64)
+			if err != nil {
+				return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to an unsigned integer"))
+			}
+			*t = srcInt
+		default:
+			return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to a %T",
+				i+1, t))
+
+		}
+	}
+	return nil
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request

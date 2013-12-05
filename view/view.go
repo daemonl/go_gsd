@@ -1,4 +1,4 @@
-package core
+package view
 
 import (
 	"github.com/daemonl/go_gsd/torch"

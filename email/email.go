@@ -14,11 +14,11 @@ type Sender struct {
 }
 
 type SmtpConfig struct {
-	ServerAddress string
-	EhloAddress   string
-	ServerPort    string
-	Username      string
-	Password      string
+	ServerAddress string `json:"serverAddress"`
+	EhloAddress   string `json:"ehloAddress"`
+	ServerPort    string `json:"port"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
 }
 
 type Email struct {
@@ -104,7 +104,7 @@ func (s *Sender) Send(email *Email) error {
 		return err
 	}
 
-	log.Println("Recipient")
+	log.Printf("Recipient %s", email.Recipient)
 	if err = c.Rcpt(email.Recipient); err != nil {
 		c.Reset()
 		log.Println(err)

@@ -139,6 +139,12 @@ func Serve(config *ServerConfig) {
 		Data:         nil,
 	}
 
+	setPasswordViewHandler := view.ViewHandler{
+		Manager:      viewManager,
+		TemplateName: "set_password.html",
+		Data:         nil,
+	}
+
 	fmt.Println(config.EmailConfig)
 	emailHandler, err := email.GetEmailHandler(config.SmtpConfig, config.EmailConfig, &templateWriter)
 	if err != nil {
@@ -149,6 +155,8 @@ func Serve(config *ServerConfig) {
 
 	http.HandleFunc("/check", parser.Wrap(checkHandle))
 	http.HandleFunc("/login", parser.WrapSplit(loginViewHandler.Handle, torch.HandleLogin))
+	http.HandleFunc("/logout", parser.Wrap(torch.HandleLogout))
+	http.HandleFunc("/set_password", parser.WrapSplit(setPasswordViewHandler.Handle, torch.HandleSetPassword))
 	http.HandleFunc("/signup", parser.WrapSplit(signupViewHandler.Handle, signupHandle))
 
 	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))

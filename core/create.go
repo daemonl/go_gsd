@@ -53,6 +53,7 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	c := r.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
+	fmt.Println(sqlString)
 	res, err := db.Exec(sqlString)
 	if err != nil {
 		fmt.Println(err)

@@ -24,17 +24,13 @@ type TemplateWriter struct {
 	ViewManager *ViewManager
 }
 
-func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryConditions) ([]map[string]interface{}, error) {
+func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryConditions, context *databath.MapContext) ([]map[string]interface{}, error) {
 	queryConditions, err := rawQueryConditions.TranslateToQuery()
 	if err != nil {
 		return nil, err
 	}
 
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-
-	query, err := databath.GetQuery(&context, h.Model, queryConditions)
+	query, err := databath.GetQuery(context, h.Model, queryConditions)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +50,11 @@ func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryCondition
 func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templateConfig *TemplateConfig, rootId uint64) error {
 	emailParameters := map[string]interface{}{}
 
+	context := databath.MapContext{
+		Fields: make(map[string]interface{}),
+	}
+	context.Fields["id"] = rootId
+
 	fieldset := "email"
 	rawQueryCondition := databath.RawQueryConditions{
 		Collection: &templateConfig.Collection,
@@ -61,7 +62,7 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 		Fieldset:   &fieldset,
 	}
 
-	results, err := h.DoSelect(&rawQueryCondition)
+	results, err := h.DoSelect(&rawQueryCondition, &context)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -70,11 +71,14 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 	if len(results) < 1 {
 		return errorf("No results found for core object")
 	}
-	fmt.Println(results[0])
+
 	emailParameters[templateConfig.Collection] = results[0]
+	for k, v := range results[0] {
+		context.Fields["main."+k] = v
+	}
 
 	for key, qc := range templateConfig.Queries {
-		results2, err := h.DoSelect(qc)
+		results2, err := h.DoSelect(qc, &context)
 		if err != nil {
 			fmt.Println(err)
 			return err

@@ -62,7 +62,8 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		"id":         updateRequest.Conditions.Pk,
 	}
 	go os.SendObjectToAll("update", updateObject)
-	go r.Model.WriteHistory(r.Bath, os.Session.User.Id, "update", *updateRequest.Conditions.Collection, *updateRequest.Conditions.Pk)
-
+	if updateRequest.Conditions.Pk != nil {
+		go r.Model.WriteHistory(r.Bath, os.Session.User.Id, "update", *updateRequest.Conditions.Collection, *updateRequest.Conditions.Pk)
+	}
 	os.SendObject("result", responseId, nil)
 }

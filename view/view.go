@@ -10,16 +10,30 @@ import (
 
 type ViewManager struct {
 	rootTemplate *template.Template
+	pattern      string
 }
 
 func GetViewManager(dir string) *ViewManager {
 	log.Println("Load View Manager")
 	pattern := filepath.Join(dir, "*.html")
-	templates := template.Must(template.ParseGlob(pattern))
 	viewManager := ViewManager{
-		rootTemplate: templates,
+		pattern: pattern,
+	}
+	err := viewManager.Reload()
+	if err != nil {
+		panic(err)
 	}
 	return &viewManager
+}
+
+func (vm *ViewManager) Reload() error {
+	templates, err := template.ParseGlob(vm.pattern)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	vm.rootTemplate = templates
+	return nil
 }
 
 func (vm *ViewManager) Render(w io.Writer, name string, data *ViewData) error {

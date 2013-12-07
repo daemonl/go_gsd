@@ -34,12 +34,12 @@ func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryCondition
 	if err != nil {
 		return nil, err
 	}
-	sqlString, err := query.BuildSelect()
+	sqlString, parameters, err := query.BuildSelect()
 	if err != nil {
 		return nil, err
 	}
 
-	allRows, err := query.RunQueryWithResults(h.Bath, sqlString)
+	allRows, err := query.RunQueryWithResults(h.Bath, sqlString, parameters)
 	if err != nil {
 		return nil, err
 	}

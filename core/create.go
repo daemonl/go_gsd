@@ -44,7 +44,7 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		fmt.Println(err)
 		return
 	}
-	sqlString, err := query.BuildInsert(createRequest.Values)
+	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -54,7 +54,7 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	db := c.GetDB()
 	defer c.Release()
 	fmt.Println(sqlString)
-	res, err := db.Exec(sqlString)
+	res, err := db.Exec(sqlString, parameters...)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -6,10 +6,11 @@ import (
 
 	"code.google.com/p/go.net/websocket"
 	"encoding/json"
-	"fmt"
+
 	"github.com/daemonl/go_gsd/torch"
 	"io"
 	"strings"
+	"time"
 )
 
 type Manager struct {
@@ -68,14 +69,18 @@ func (m *Manager) GetListener() *websocket.Handler {
 func (m *Manager) listener(ws *websocket.Conn) {
 	sessCookie, err := ws.Request().Cookie("gsd_session")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
+		ws.Write([]byte("BEGIN|auth|"))
+		ws.Write([]byte("{\"message\":\"Not Logged In\"}"))
+		ws.Write([]byte("END|auth|"))
+		time.Sleep(time.Second * 1)
 		ws.Close()
 		return
 	}
 
 	session, err := m.sessionStore.GetSession(sessCookie.Value)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		ws.Close()
 		return
 	}
@@ -105,10 +110,11 @@ func (m *Manager) listener(ws *websocket.Conn) {
 	for {
 		line, err := r.ReadString('\n')
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
-		fmt.Printf("LINE IN: %s\n", line)
+		log.Printf("LINE IN: %s", line)
+		os.Session.LastRequest = time.Now()
 		m.parse(line, &os)
 	}
 }
@@ -133,7 +139,7 @@ func (m *Manager) parse(raw string, os *OpenSocket) {
 
 	err := json.Unmarshal([]byte(parts[2]), requestObj)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 

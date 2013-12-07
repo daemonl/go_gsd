@@ -61,6 +61,17 @@ type ServerConfig struct {
 	PdfConfig *pdf.PdfHandlerConfig
 	PdfFile   *string `json:"pdfFile"`
 	PdfBinary *string `json:"pdfBinary"`
+
+	ViewManager *view.ViewManager
+}
+
+func (config *ServerConfig) ReloadHandle(requestTorch *torch.Request) {
+	err := config.ViewManager.Reload()
+	if err != nil {
+		requestTorch.Writef("Error Loading Views: %s", err.Error())
+		return
+	}
+	requestTorch.Writef("Loaded Views")
 }
 
 func Serve(config *ServerConfig) {
@@ -76,7 +87,7 @@ func Serve(config *ServerConfig) {
 		parser.PublicPatterns[i] = reg
 	}
 
-	viewManager := view.GetViewManager(config.TemplateRoot)
+	config.ViewManager = view.GetViewManager(config.TemplateRoot)
 
 	model, err := databath.ReadModelFromFile(config.ModelFile)
 	if err != nil {
@@ -86,7 +97,7 @@ func Serve(config *ServerConfig) {
 	templateWriter := view.TemplateWriter{
 		Bath:        parser.Bath,
 		Model:       model,
-		ViewManager: viewManager,
+		ViewManager: config.ViewManager,
 	}
 
 	socketManager := socket.GetManager(parser.Store)
@@ -127,20 +138,23 @@ func Serve(config *ServerConfig) {
 	}
 	socketManager.RegisterHandler("custom", &customHandler)
 
+	pingHandler := PingHandler{}
+	socketManager.RegisterHandler("ping", &pingHandler)
+
 	loginViewHandler := view.ViewHandler{
-		Manager:      viewManager,
+		Manager:      config.ViewManager,
 		TemplateName: "login.html",
 		Data:         nil,
 	}
 
 	signupViewHandler := view.ViewHandler{
-		Manager:      viewManager,
+		Manager:      config.ViewManager,
 		TemplateName: "signup.html",
 		Data:         nil,
 	}
 
 	setPasswordViewHandler := view.ViewHandler{
-		Manager:      viewManager,
+		Manager:      config.ViewManager,
 		TemplateName: "set_password.html",
 		Data:         nil,
 	}
@@ -161,6 +175,8 @@ func Serve(config *ServerConfig) {
 
 	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
 	http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
+
+	http.HandleFunc("/reload", parser.Wrap(config.ReloadHandle))
 
 	http.HandleFunc("/emailpreview/", parser.Wrap(emailHandler.Preview))
 	http.HandleFunc("/sendmail/", parser.Wrap(emailHandler.Send))

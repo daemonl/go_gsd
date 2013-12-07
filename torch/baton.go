@@ -70,17 +70,20 @@ func (parser *Parser) WrapReturn(handler func(*Request)) func(w http.ResponseWri
 			return nil
 		}
 		if requestTorch.Session.User == nil {
-			log.Println("NOT LOGGED IN")
-			log.Printf("Check Path %s", r.URL.Path)
+			log.Printf("PUBLIC: Check Path %s", r.URL.Path)
 			for _, p := range parser.PublicPatterns {
 				log.Println(p.String())
 				if p.MatchString(r.URL.Path) {
-					log.Printf("Matched Public Path %s", p.String())
+					log.Printf("PUBLIC: Matched Public Path %s", p.String())
 					handler(requestTorch)
 					return requestTorch
 				}
 			}
-			log.Println("No Public Pathes Matched")
+
+			log.Println("PUBLIC: No Public Pathes Matched")
+			if strings.HasSuffix(r.URL.Path, ".html") {
+				requestTorch.Session.LoginTarget = &r.URL.Path
+			}
 			requestTorch.Redirect("/login")
 		} else {
 			handler(requestTorch)

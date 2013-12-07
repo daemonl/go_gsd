@@ -38,13 +38,13 @@ func (r *SelectQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		fmt.Println("E", err)
 		return
 	}
-	sqlString, err := query.BuildSelect()
+	sqlString, parameters, err := query.BuildSelect()
 	if err != nil {
 		fmt.Println("E", err)
 		return
 	}
 
-	allRows, err := query.RunQueryWithResults(r.Bath, sqlString)
+	allRows, err := query.RunQueryWithResults(r.Bath, sqlString, parameters)
 	if err != nil {
 		fmt.Println("E", err)
 		return

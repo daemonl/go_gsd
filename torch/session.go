@@ -5,14 +5,18 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 )
 
 type Session struct {
-	Key   *string // Points to the actual key
-	User  *User
-	Store *SessionStore
-	Flash []FlashMessage
+	Key         *string // Points to the actual key
+	User        *User
+	Store       *SessionStore
+	Flash       []FlashMessage
+	LoginTarget *string
+	LastRequest time.Time
 }
 
 type SessionStore struct {
@@ -38,7 +42,25 @@ func InMemorySessionStore() *SessionStore {
 	ss := SessionStore{
 		sessions: make(map[string]*Session),
 	}
+
+	go ss.StartExpiry()
 	return &ss
+}
+
+func (ss *SessionStore) StartExpiry() {
+
+	for {
+		time.Sleep(time.Second * 10)
+
+		log.Println("CHECK SESSOIN EXPIRY")
+		for key, s := range ss.sessions {
+			if time.Since(s.LastRequest).Minutes() > 1 {
+				log.Printf("Expire Session %s", key)
+				delete(ss.sessions, key)
+			}
+		}
+	}
+
 }
 
 func (ss *SessionStore) NewSession() *Session {
@@ -46,8 +68,9 @@ func (ss *SessionStore) NewSession() *Session {
 	_, _ = rand.Reader.Read(randBytes)
 	keyString := hex.EncodeToString(randBytes)
 	session := Session{
-		Key:   &keyString,
-		Store: ss,
+		Key:         &keyString,
+		Store:       ss,
+		LastRequest: time.Now(),
 	}
 	ss.sessions[keyString] = &session
 	return &session
@@ -59,6 +82,7 @@ func (ss *SessionStore) GetSession(key string) (*Session, error) {
 		fmt.Printf("Session Not Found: %s\n", key)
 		return nil, errors.New("No session with that key")
 	}
+	sess.LastRequest = time.Now()
 	return sess, nil
 }
 
@@ -84,6 +108,8 @@ func (request *Request) Redirect(to string) {
 
 func (request *Request) NewSession(store *SessionStore) {
 	request.Session = store.NewSession()
-	request.writer.Header().Add("Set-Cookie", fmt.Sprintf("gsd_session=%s", *request.Session.Key))
+	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 3600, Value: *request.Session.Key}
+	request.writer.Header().Add("Set-Cookie", c.String())
+	//request.writer.Header().Add("Set-Cookie", fmt.Sprintf("gsd_session=%s", *request.Session.Key))
 	//log.Printf("Generate New Session %s", *request.Session.Key)
 }

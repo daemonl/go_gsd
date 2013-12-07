@@ -41,7 +41,7 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		fmt.Printf("Error building query: %s\n", err.Error())
 		return
 	}
-	sqlString, err := query.BuildUpdate(updateRequest.Changeset)
+	sqlString, parameters, err := query.BuildUpdate(updateRequest.Changeset)
 	if err != nil {
 		fmt.Printf("Error executing update query: %s\n", err.Error())
 
@@ -51,7 +51,7 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	c := r.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
-	_, err = db.Query(sqlString)
+	_, err = db.Query(sqlString, parameters...)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -59,12 +59,16 @@ func HandleLogin(requestTorch *Request) {
 		return
 	}
 	if res {
+		target := "/app.html"
+		if requestTorch.Session.LoginTarget != nil {
+			target = *requestTorch.Session.LoginTarget
+		}
 		requestTorch.NewSession(requestTorch.Session.Store)
 		requestTorch.Session.User = &user
 		if user.SetOnNextLogin {
 			requestTorch.Redirect("/set_password")
 		} else {
-			requestTorch.Redirect("/app.html")
+			requestTorch.Redirect(target)
 		}
 
 	} else {

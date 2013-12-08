@@ -42,11 +42,13 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	query, err := databath.GetQuery(&context, r.Model, qc)
 	if err != nil {
 		fmt.Println(err)
+		os.SendError(responseId, err)
 		return
 	}
 	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
 		fmt.Println(err)
+		os.SendError(responseId, err)
 		return
 	}
 
@@ -57,11 +59,13 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	res, err := db.Exec(sqlString, parameters...)
 	if err != nil {
 		fmt.Println(err)
+		os.SendError(responseId, err)
 		return
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
 		fmt.Println(err)
+		os.SendError(responseId, err)
 		return
 	}
 	result := createResult{

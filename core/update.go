@@ -53,12 +53,13 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	c := r.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
-	_, err = db.Query(sqlString, parameters...)
+	resp, err := db.Exec(sqlString, parameters...)
 	if err != nil {
 		os.SendError(responseId, err)
 		fmt.Println(err)
 		return
 	}
+	rows, _ := resp.RowsAffected()
 
 	updateObject := map[string]interface{}{
 		"collection": updateRequest.Conditions.Collection,
@@ -68,5 +69,5 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	if updateRequest.Conditions.Pk != nil {
 		go r.Model.WriteHistory(r.Bath, os.Session.User.Id, "update", *updateRequest.Conditions.Collection, *updateRequest.Conditions.Pk)
 	}
-	os.SendObject("result", responseId, nil)
+	os.SendObject("result", responseId, map[string]int64{"affected": rows})
 }

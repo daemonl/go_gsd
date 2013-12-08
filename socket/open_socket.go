@@ -24,6 +24,7 @@ func (os *OpenSocket) Close() {
 }
 func (os *OpenSocket) Wait() {
 	for {
+		log.Println("POISE!")
 		select {
 		case msg := <-os.Sender:
 			os.ws.Write([]byte("BEGIN|" + msg.GetFunctionName() + "|" + msg.GetResponseId()))
@@ -40,6 +41,9 @@ func (os *OpenSocket) SendObject(functionName string, responseId string, object 
 	m := StringSocketMessage{FunctionName: functionName, ResponseId: responseId, Message: string(bytes)}
 	os.Sender <- &m
 }
+func (os *OpenSocket) SendRaw(sm SocketMessage) {
+	os.Sender <- sm
+}
 func (os *OpenSocket) SendError(responseId string, err error) {
 	errObject := socketError{
 		Message: err.Error(),
@@ -55,7 +59,8 @@ func (os *OpenSocket) SendObjectToAll(functionName string, object interface{}) {
 	log.Println(string(bytes))
 	for i, otherSocket := range os.Manager.OpenSockets {
 		log.Printf("Send to %d\n", i)
-		otherSocket.Sender <- &m
+		go otherSocket.SendRaw(&m)
+
 	}
 	log.Println("END BROADCAST")
 }

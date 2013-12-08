@@ -7,9 +7,9 @@ import (
 type User struct {
 	Id             uint64 `json:"id"`
 	Username       string `json:"username"`
-	Password       string `json:""`
+	password       string
 	Access         string `json:"access"`
-	SetOnNextLogin bool   `json:""`
+	SetOnNextLogin bool   `json:"set_on_next_login"`
 }
 
 func HandleLogout(requestTorch *Request) {
@@ -41,7 +41,7 @@ func HandleLogin(requestTorch *Request) {
 	}
 
 	user := User{}
-	err = rows.Scan(&user.Id, &user.Username, &user.Password, &user.Access, &user.SetOnNextLogin)
+	err = rows.Scan(&user.Id, &user.Username, &user.password, &user.Access, &user.SetOnNextLogin)
 	if err != nil {
 		log.Println("Error on retrieve user from database")
 		log.Println(err.Error())
@@ -51,7 +51,7 @@ func HandleLogin(requestTorch *Request) {
 	}
 
 	log.Printf("Check Password")
-	res, err := CheckPassword(user.Password, password)
+	res, err := user.CheckPassword(password)
 	if err != nil {
 		log.Println(err.Error())
 		requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")

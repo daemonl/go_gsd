@@ -6,11 +6,16 @@ import (
 
 func TestEndToEnd(t *testing.T) {
 	plaintext := "abcd1234"
+
 	hashed := HashPassword(plaintext)
+	u := User{
+		password: hashed,
+	}
 	if len(hashed) < 260 {
 		t.Error("Insufficient hash length")
 	}
-	if !CheckPassword(hashed, plaintext) {
+	m, err := u.CheckPassword(plaintext)
+	if err != nil || !m {
 		t.Error("Check Password failed for same plaintext")
 	}
 }
@@ -43,7 +48,9 @@ func TestVariousStrings(t *testing.T) {
 		if len(hashed1) < 260 {
 			t.Errorf("Insufficient hash length for '%s'", plaintext)
 		}
-		if !CheckPassword(hashed1, plaintext) {
+		u := User{password: hashed1}
+		m, err := u.CheckPassword(plaintext)
+		if !m || err != nil {
 			t.Errorf("Check Password failed for '%s'", plaintext)
 		}
 	}

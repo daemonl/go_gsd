@@ -24,7 +24,7 @@ func HandleSetPassword(r *Request) {
 		}
 	} else {
 		//Check Current Password
-		matches, err := CheckPassword(r.Session.User.Password, currentPassword)
+		matches, err := r.Session.User.CheckPassword(currentPassword)
 		if err != nil {
 			log.Println(err)
 			r.Session.AddFlash("error", "Something went wrong...")

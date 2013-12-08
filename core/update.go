@@ -30,6 +30,7 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	queryConditions, err := updateRequest.Conditions.TranslateToQuery()
 	if err != nil {
 		fmt.Printf("Error translating to query: %s\n", err.Error())
+		os.SendError(responseId, err)
 		return
 	}
 	_ = queryConditions
@@ -39,20 +40,22 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	query, err := databath.GetQuery(&context, r.Model, queryConditions)
 	if err != nil {
 		fmt.Printf("Error building query: %s\n", err.Error())
+		os.SendError(responseId, err)
 		return
 	}
 	sqlString, parameters, err := query.BuildUpdate(updateRequest.Changeset)
 	if err != nil {
 		fmt.Printf("Error executing update query: %s\n", err.Error())
-
+		os.SendError(responseId, err)
 		return
 	}
-	fmt.Println(sqlString)
+	fmt.Printf("SQL: %s, %#v\n", sqlString, parameters)
 	c := r.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
 	_, err = db.Query(sqlString, parameters...)
 	if err != nil {
+		os.SendError(responseId, err)
 		fmt.Println(err)
 		return
 	}

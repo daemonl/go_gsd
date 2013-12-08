@@ -15,6 +15,10 @@ type OpenSocket struct {
 	Manager *Manager
 }
 
+type socketError struct {
+	Message string `json:"message"`
+}
+
 func (os *OpenSocket) Close() {
 	os.Closer <- true
 }
@@ -36,7 +40,14 @@ func (os *OpenSocket) SendObject(functionName string, responseId string, object 
 	m := StringSocketMessage{FunctionName: functionName, ResponseId: responseId, Message: string(bytes)}
 	os.Sender <- &m
 }
-
+func (os *OpenSocket) SendError(responseId string, err error) {
+	errObject := socketError{
+		Message: err.Error(),
+	}
+	bytes, _ := json.Marshal(errObject)
+	m := StringSocketMessage{FunctionName: "error", ResponseId: responseId, Message: string(bytes)}
+	os.Sender <- &m
+}
 func (os *OpenSocket) SendObjectToAll(functionName string, object interface{}) {
 	bytes, _ := json.Marshal(object)
 	m := StringSocketMessage{FunctionName: functionName, ResponseId: "", Message: string(bytes)}

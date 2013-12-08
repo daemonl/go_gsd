@@ -29,10 +29,10 @@ func HashPassword(plaintext string) string {
 	return base64.URLEncoding.EncodeToString(append(saltBytes, hashBytes...))
 }
 
-func CheckPassword(storedString string, plaintext string) (bool, error) {
+func (u *User) CheckPassword(plaintext string) (bool, error) {
 
 	// Deocde the hash string
-	stored, err := base64.URLEncoding.DecodeString(storedString)
+	stored, err := base64.URLEncoding.DecodeString(u.password)
 	if err != nil {
 		log.Println(err)
 		return false, err

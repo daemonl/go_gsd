@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/pdf"
 	"github.com/daemonl/go_gsd/socket"
@@ -159,7 +158,6 @@ func Serve(config *ServerConfig) {
 		Data:         nil,
 	}
 
-	fmt.Println(config.EmailConfig)
 	emailHandler, err := email.GetEmailHandler(config.SmtpConfig, config.EmailConfig, &templateWriter)
 	if err != nil {
 		log.Panic(err)

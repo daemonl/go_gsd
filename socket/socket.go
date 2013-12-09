@@ -111,6 +111,7 @@ func (m *Manager) listener(ws *websocket.Conn) {
 		line, err := r.ReadString('\n')
 		if err != nil {
 			log.Println(err)
+			os.Close()
 			return
 		}
 		log.Printf("LINE IN: %s", line)

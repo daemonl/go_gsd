@@ -6,11 +6,9 @@ import (
 	"github.com/daemonl/go_lib/databath"
 	"log"
 	"net/http"
-
 	"regexp"
-	"strings"
-
 	"strconv"
+	"strings"
 )
 
 type Parser struct {
@@ -50,6 +48,7 @@ func (r *Request) UrlMatch(dest ...interface{}) error {
 				return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to an unsigned integer"))
 			}
 			*t = srcInt
+
 		default:
 			return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to a %T",
 				i+1, t))
@@ -57,6 +56,9 @@ func (r *Request) UrlMatch(dest ...interface{}) error {
 		}
 	}
 	return nil
+}
+func (r *Request) DoError(err error) {
+	r.Writef("Error: %s", err.Error())
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request

@@ -1,7 +1,9 @@
 package core
 
 import (
+	"github.com/daemonl/go_gsd/csv"
 	"github.com/daemonl/go_gsd/email"
+	"github.com/daemonl/go_gsd/file"
 	"github.com/daemonl/go_gsd/pdf"
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
@@ -52,6 +54,7 @@ type ServerConfig struct {
 	WebRoot           string                `json:"webRoot"`
 	BindAddress       string                `json:"bindAddress"`
 	PublicPatternsRaw []string              `json:"publicPatterns"`
+	UploadDirectory   string                `json:"uploadDirectory"`
 
 	EmailConfig *email.EmailHandlerConfig
 	EmailFile   *string           `json:"emailFile"`
@@ -163,6 +166,12 @@ func Serve(config *ServerConfig) {
 		log.Panic(err)
 	}
 	pdfHandler, err := pdf.GetPdfHandler(*config.PdfBinary, config.PdfConfig, &templateWriter)
+	if err != nil {
+		log.Panic(err)
+	}
+	fileHandler := file.GetFileHandler(config.UploadDirectory, parser.Bath, model)
+	csvHandler := csv.GetCsvHandler(config.UploadDirectory, parser.Bath, model)
+
 	fallthroughHandler := GetFallthroughHandler(config)
 
 	http.HandleFunc("/check", parser.Wrap(checkHandle))
@@ -173,6 +182,9 @@ func Serve(config *ServerConfig) {
 
 	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
 	http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
+	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
+	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
+	http.HandleFunc("/csv/", parser.Wrap(csvHandler.Handle))
 
 	http.HandleFunc("/reload", parser.Wrap(config.ReloadHandle))
 

@@ -20,5 +20,9 @@ func GetFallthroughHandler(config *ServerConfig) *FallthroughHandler {
 
 }
 func (h *FallthroughHandler) Handle(requestTorch *torch.Request) {
+	_, r := requestTorch.GetRaw()
+	if r.URL.Path == "/" {
+		requestTorch.Redirect("/app.html")
+	}
 	h.fsHandler.ServeHTTP(requestTorch.GetRaw())
 }

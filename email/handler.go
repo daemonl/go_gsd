@@ -79,13 +79,13 @@ func (h *EmailHandler) Send(requestTorch *torch.Request) {
 
 	err := requestTorch.UrlMatch(&functionName, &emailName, &id, &recipient, &notes)
 	if err != nil {
-		log.Println(err)
+		requestTorch.DoError(err)
 		return
 	}
 	w := bytes.Buffer{}
 	emailConfig, ok := h.HandlerConfig.Templates[emailName]
 	if !ok {
-		log.Println("Template not found")
+		requestTorch.DoErrorf("Template %s not found", emailName)
 		return
 	}
 	err = h.TemplateWriter.Write(&w, requestTorch, &emailConfig, id)
@@ -97,20 +97,26 @@ func (h *EmailHandler) Send(requestTorch *torch.Request) {
 	parts := strings.SplitN(str, "\n", 2)
 	if len(parts) != 2 {
 		log.Println("PARTS LENGH != 2")
+		requestTorch.DoErrorf("Email template didn't have a newline, could not extract a subject")
 		return
 	}
+
+	notes = strings.Replace(notes, "\n", "<br/>", -1)
+	html := parts[1]
+	html = strings.Replace(html, "--- NOTES HERE ---", notes, 1)
 
 	email := Email{
 		Sender:    h.HandlerConfig.From,
 		Recipient: recipient,
 		Subject:   parts[0],
-		Html:      parts[1],
+		Html:      html,
 	}
 
 	err = h.Sender.Send(&email)
 	if err != nil {
-		log.Println(err)
+		requestTorch.DoError(err)
 		return
 	}
+	requestTorch.Write("Email Sent Successfully")
 
 }

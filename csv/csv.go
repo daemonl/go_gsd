@@ -16,16 +16,14 @@ type CSVHandler struct {
 	Model *databath.Model
 }
 
-func GetCsvHandler(location string, Bath *databath.Bath, Model *databath.Model) *CSVHandler {
-	if Model == nil {
-		panic("NO MODEL")
-	}
+func GetCsvHandler(Bath *databath.Bath, Model *databath.Model) *CSVHandler {
 	fh := CSVHandler{
 		Bath:  Bath,
 		Model: Model,
 	}
 	return &fh
 }
+
 func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 
 	var functionName string
@@ -100,5 +98,4 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 		csvWriter.Write(record)
 	}
 	csvWriter.Flush()
-
 }

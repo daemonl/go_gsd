@@ -170,7 +170,7 @@ func Serve(config *ServerConfig) {
 		log.Panic(err)
 	}
 	fileHandler := file.GetFileHandler(config.UploadDirectory, parser.Bath, model)
-	csvHandler := csv.GetCsvHandler(config.UploadDirectory, parser.Bath, model)
+	csvHandler := csv.GetCsvHandler(parser.Bath, model)
 
 	fallthroughHandler := GetFallthroughHandler(config)
 

@@ -58,7 +58,14 @@ func (r *Request) UrlMatch(dest ...interface{}) error {
 	return nil
 }
 func (r *Request) DoError(err error) {
+	log.Println(err)
 	r.Writef("Error: %s", err.Error())
+}
+
+func (r *Request) DoErrorf(format string, parameters ...interface{}) {
+	str := fmt.Sprintf(format, parameters...)
+	log.Println(str)
+	r.Write(str)
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request

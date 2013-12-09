@@ -38,7 +38,7 @@ func (s *Sender) Send(email *Email) error {
 		"Reply-To":     email.Sender,
 		"Subject":      email.Subject,
 		"MIME-Version": "1.0",
-		"Content-Type": "text/plain",
+		"Content-Type": "text/html",
 	}
 
 	buf := bytes.NewBuffer(nil)

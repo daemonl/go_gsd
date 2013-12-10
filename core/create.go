@@ -79,6 +79,8 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		"id":         id,
 		"object":     createRequest.Values,
 	}
+
+	go r.Model.WriteHistory(r.Bath, os.Session.User.Id, "create", createRequest.Collection, uint64(id))
 	go os.SendObjectToAll("create", createObject)
 	os.SendObject("result", responseId, result)
 }

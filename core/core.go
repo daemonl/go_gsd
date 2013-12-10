@@ -3,7 +3,7 @@ package core
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
+
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/pdf"
 
@@ -39,7 +39,7 @@ func init() {
 	}
 	flag.StringVar(&configFilename, "config", wd+"/config.json", "Use Thusly")
 	flag.BoolVar(&doSync, "sync", false, "Kick off a db sync instead of serving")
-	flag.BoolVar(&doSync, "force", false, "Run SQL statements live")
+	flag.BoolVar(&forceSync, "force", false, "Run SQL statements live")
 }
 
 func fileNameToObject(filename string, object interface{}) error {
@@ -62,7 +62,7 @@ func fileNameToObject(filename string, object interface{}) error {
 
 func ParseCLI() *ServerConfig {
 	flag.Parse()
-	fmt.Println(configFilename)
+	log.Println(configFilename)
 
 	var config ServerConfig
 	err := fileNameToObject(configFilename, &config)

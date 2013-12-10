@@ -9,6 +9,7 @@ import (
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
 	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/go_lib/databath/sync"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"net/http"
@@ -78,9 +79,24 @@ func (config *ServerConfig) ReloadHandle(requestTorch *torch.Request) {
 
 func Serve(config *ServerConfig) {
 
+	bath := databath.RunABath(config.Database.Driver, config.Database.DataSourceName, config.Database.PoolSize)
+
+	model, err := databath.ReadModelFromFile(config.ModelFile)
+	if err != nil {
+		panic("COULD NOT READ MODEL :" + err.Error())
+	}
+
+	// IF IT IS TO SYNC, STOP HERE (--sync)
+	if doSync {
+		conn := bath.GetConnection()
+		db := conn.GetDB()
+		sync.SyncDb(db, model, forceSync)
+		return
+	}
+
 	parser := torch.Parser{
 		Store:          torch.InMemorySessionStore(),
-		Bath:           databath.RunABath(config.Database.Driver, config.Database.DataSourceName, config.Database.PoolSize),
+		Bath:           bath,
 		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
 	}
 
@@ -91,13 +107,8 @@ func Serve(config *ServerConfig) {
 
 	config.ViewManager = view.GetViewManager(config.TemplateRoot)
 
-	model, err := databath.ReadModelFromFile(config.ModelFile)
-	if err != nil {
-		panic("COULD NOT READ MODEL :" + err.Error())
-	}
-
 	templateWriter := view.TemplateWriter{
-		Bath:        parser.Bath,
+		Bath:        bath,
 		Model:       model,
 		ViewManager: config.ViewManager,
 	}
@@ -106,37 +117,37 @@ func Serve(config *ServerConfig) {
 
 	getHandler := SelectQuery{
 		Model: model,
-		Bath:  parser.Bath,
+		Bath:  bath,
 	}
 	socketManager.RegisterHandler("get", &getHandler)
 
 	setHandler := UpdateQuery{
 		Model: model,
-		Bath:  parser.Bath,
+		Bath:  bath,
 	}
 	socketManager.RegisterHandler("set", &setHandler)
 
 	createHandler := CreateQuery{
 		Model: model,
-		Bath:  parser.Bath,
+		Bath:  bath,
 	}
 	socketManager.RegisterHandler("create", &createHandler)
 
 	deleteHandler := DeleteQuery{
 		Model: model,
-		Bath:  parser.Bath,
+		Bath:  bath,
 	}
 	socketManager.RegisterHandler("delete", &deleteHandler)
 
 	choicesForHandler := ChoicesForQuery{
 		Model: model,
-		Bath:  parser.Bath,
+		Bath:  bath,
 	}
 	socketManager.RegisterHandler("getChoicesFor", &choicesForHandler)
 
 	customHandler := CustomQuery{
 		Model: model,
-		Bath:  parser.Bath,
+		Bath:  bath,
 	}
 	socketManager.RegisterHandler("custom", &customHandler)
 

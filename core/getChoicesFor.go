@@ -4,6 +4,7 @@ import (
 	"github.com/daemonl/go_gsd/socket"
 
 	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/go_lib/databath/types"
 )
 
 type ChoicesForQuery struct {
@@ -39,7 +40,7 @@ func (r *ChoicesForQuery) HandleRequest(os *socket.OpenSocket, requestObject int
 		return
 	}
 
-	refField, ok := field.(*databath.FieldRef)
+	refField, ok := field.(*types.FieldRef)
 	if !ok {
 		return
 	}

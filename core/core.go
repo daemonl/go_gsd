@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/pdf"
+
 	"io"
 	"log"
 	"os"
@@ -28,6 +29,8 @@ func (ssm *StringSocketMessage) PipeMessage(w io.Writer) {
 }
 
 var configFilename string
+var doSync bool
+var forceSync bool
 
 func init() {
 	wd, err := os.Getwd()
@@ -35,6 +38,8 @@ func init() {
 		panic(err)
 	}
 	flag.StringVar(&configFilename, "config", wd+"/config.json", "Use Thusly")
+	flag.BoolVar(&doSync, "sync", false, "Kick off a db sync instead of serving")
+	flag.BoolVar(&doSync, "force", false, "Run SQL statements live")
 }
 
 func fileNameToObject(filename string, object interface{}) error {

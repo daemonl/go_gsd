@@ -7,14 +7,13 @@ import (
 	"github.com/daemonl/go_lib/databath"
 )
 
+type UpdateQuery struct {
+	Core *GSDCore
+}
+
 type updateRequest struct {
 	Conditions databath.RawQueryConditions `json:"query"`
 	Changeset  map[string]interface{}      `json:"changeset"`
-}
-
-type UpdateQuery struct {
-	Model *databath.Model
-	Bath  *databath.Bath
 }
 
 func (q *UpdateQuery) GetRequestObject() interface{} {
@@ -37,11 +36,21 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	context := databath.MapContext{
 		Fields: make(map[string]interface{}),
 	}
-	query, err := databath.GetQuery(&context, r.Model, queryConditions)
+	query, err := databath.GetQuery(&context, r.Core.Model, queryConditions)
 	if err != nil {
 		fmt.Printf("Error building query: %s\n", err.Error())
 		os.SendError(responseId, err)
 		return
+	}
+	if updateRequest.Conditions.Pk != nil {
+		actionSummary := ActionSummary{
+			User:       os.Session.User,
+			Action:     "update",
+			Collection: r.Core.Model.Collections[*updateRequest.Conditions.Collection],
+			Pk:         *updateRequest.Conditions.Pk,
+			Fields:     updateRequest.Changeset,
+		}
+		r.Core.Hooker.DoPreHooks(&actionSummary)
 	}
 	sqlString, parameters, err := query.BuildUpdate(updateRequest.Changeset)
 	if err != nil {
@@ -50,7 +59,7 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		return
 	}
 	fmt.Printf("SQL: %s, %#v\n", sqlString, parameters)
-	c := r.Bath.GetConnection()
+	c := r.Core.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
 	resp, err := db.Exec(sqlString, parameters...)
@@ -67,7 +76,15 @@ func (r *UpdateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	}
 	go os.SendObjectToAll("update", updateObject)
 	if updateRequest.Conditions.Pk != nil {
-		go r.Model.WriteHistory(r.Bath, os.Session.User.Id, "update", *updateRequest.Conditions.Collection, *updateRequest.Conditions.Pk)
+		actionSummary := ActionSummary{
+			User:       os.Session.User,
+			Action:     "update",
+			Collection: r.Core.Model.Collections[*updateRequest.Conditions.Collection],
+			Pk:         *updateRequest.Conditions.Pk,
+			Fields:     updateRequest.Changeset,
+		}
+		go r.Core.Hooker.DoPostHooks(&actionSummary)
+
 	}
 	os.SendObject("result", responseId, map[string]int64{"affected": rows})
 }

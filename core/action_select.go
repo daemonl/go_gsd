@@ -8,8 +8,7 @@ import (
 )
 
 type SelectQuery struct {
-	Model *databath.Model
-	Bath  *databath.Bath
+	Core *GSDCore
 }
 
 func (q *SelectQuery) GetRequestObject() interface{} {
@@ -33,7 +32,7 @@ func (r *SelectQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	context := databath.MapContext{
 		Fields: make(map[string]interface{}),
 	}
-	query, err := databath.GetQuery(&context, r.Model, queryConditions)
+	query, err := databath.GetQuery(&context, r.Core.Model, queryConditions)
 	if err != nil {
 		fmt.Println("E", err)
 		return
@@ -44,7 +43,7 @@ func (r *SelectQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		return
 	}
 
-	allRows, err := query.RunQueryWithResults(r.Bath, sqlString, parameters)
+	allRows, err := query.RunQueryWithResults(r.Core.Bath, sqlString, parameters)
 	if err != nil {
 		fmt.Println("E", err)
 		return

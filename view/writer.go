@@ -88,8 +88,11 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 	}
 
 	data := ViewData{
-		Session: requestTorch.Session,
-		Data:    emailParameters,
+		Data: emailParameters,
+	}
+
+	if requestTorch != nil {
+		data.Session = requestTorch.Session
 	}
 
 	err = h.ViewManager.Render(w, templateConfig.TemplateFile, &data)

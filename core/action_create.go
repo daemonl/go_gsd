@@ -7,8 +7,7 @@ import (
 )
 
 type CreateQuery struct {
-	Model *databath.Model
-	Bath  *databath.Bath
+	Core *GSDCore
 }
 
 type createRequest struct {
@@ -39,12 +38,23 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		Fields: make(map[string]interface{}),
 	}
 
-	query, err := databath.GetQuery(&context, r.Model, qc)
+	query, err := databath.GetQuery(&context, r.Core.Model, qc)
 	if err != nil {
 		fmt.Println(err)
 		os.SendError(responseId, err)
 		return
 	}
+
+	actionSummary := ActionSummary{
+		User:       os.Session.User,
+		Action:     "create",
+		Collection: r.Core.Model.Collections[createRequest.Collection],
+		Pk:         0,
+		Fields:     createRequest.Values,
+	}
+
+	r.Core.Hooker.DoPreHooks(&actionSummary)
+
 	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
 		fmt.Println(err)
@@ -52,7 +62,7 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		return
 	}
 
-	c := r.Bath.GetConnection()
+	c := r.Core.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
 	fmt.Println(sqlString)
@@ -79,8 +89,9 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		"id":         id,
 		"object":     createRequest.Values,
 	}
+	//go doHooks(r.Core.Bath, r.Core.Model)
 
-	go r.Model.WriteHistory(r.Bath, os.Session.User.Id, "create", createRequest.Collection, uint64(id))
+	go r.Core.Hooker.DoPostHooks(&actionSummary)
 	go os.SendObjectToAll("create", createObject)
 	os.SendObject("result", responseId, result)
 }

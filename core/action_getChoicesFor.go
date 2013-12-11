@@ -8,8 +8,7 @@ import (
 )
 
 type ChoicesForQuery struct {
-	Model *databath.Model
-	Bath  *databath.Bath
+	Core *GSDCore
 }
 
 type RawChoicesQuery struct {
@@ -30,7 +29,7 @@ func (r *ChoicesForQuery) HandleRequest(os *socket.OpenSocket, requestObject int
 		return
 	}
 
-	collection, ok := r.Model.Collections[cq.Collection]
+	collection, ok := r.Core.Model.Collections[cq.Collection]
 	if !ok {
 		return
 	}
@@ -59,8 +58,7 @@ func (r *ChoicesForQuery) HandleRequest(os *socket.OpenSocket, requestObject int
 	}
 
 	sq := SelectQuery{
-		Model: r.Model,
-		Bath:  r.Bath,
+		Core: r.Core,
 	}
 	sq.HandleRequest(os, &searchQueryConditions, responseId)
 }

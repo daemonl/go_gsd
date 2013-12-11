@@ -8,8 +8,7 @@ import (
 )
 
 type DeleteQuery struct {
-	Model *databath.Model
-	Bath  *databath.Bath
+	Core *GSDCore
 }
 
 type deleteRequest struct {
@@ -34,7 +33,7 @@ func (r *DeleteQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		Fields: make(map[string]interface{}),
 	}
 
-	query, err := databath.GetQuery(&context, r.Model, qc)
+	query, err := databath.GetQuery(&context, r.Core.Model, qc)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -45,7 +44,7 @@ func (r *DeleteQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		return
 	}
 	fmt.Println(sqlString)
-	c := r.Bath.GetConnection()
+	c := r.Core.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
 	_, err = db.Exec(sqlString)

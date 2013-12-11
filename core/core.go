@@ -38,7 +38,7 @@ func init() {
 		panic(err)
 	}
 	flag.StringVar(&configFilename, "config", wd+"/config.json", "Use Thusly")
-	flag.BoolVar(&doSync, "sync", false, "Kick off a db sync instead of serving")
+	flag.BoolVar(&doSync, "sync", false, "Kick off a db sync instead of serving, Dumps the SQL to stdout unless --force is set")
 	flag.BoolVar(&forceSync, "force", false, "Run SQL statements live")
 }
 

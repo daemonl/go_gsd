@@ -17,9 +17,6 @@ import (
 	"strings"
 )
 
-var parser *torch.Parser
-var bath *databath.Bath
-
 func checkHandle(requestTorch *torch.Request) {
 	requestTorch.Writef("Session Key: %s\n\n", *requestTorch.Session.Key)
 	if requestTorch.Session.User != nil {
@@ -94,6 +91,16 @@ func Serve(config *ServerConfig) {
 		return
 	}
 
+	core := GSDCore{
+		Bath:  bath,
+		Model: model,
+	}
+	h := Hooker{
+		Core: &core,
+	}
+
+	core.Hooker = &h
+
 	parser := torch.Parser{
 		Store:          torch.InMemorySessionStore(),
 		Bath:           bath,
@@ -115,40 +122,22 @@ func Serve(config *ServerConfig) {
 
 	socketManager := socket.GetManager(parser.Store)
 
-	getHandler := SelectQuery{
-		Model: model,
-		Bath:  bath,
-	}
+	getHandler := SelectQuery{Core: &core}
 	socketManager.RegisterHandler("get", &getHandler)
 
-	setHandler := UpdateQuery{
-		Model: model,
-		Bath:  bath,
-	}
+	setHandler := UpdateQuery{Core: &core}
 	socketManager.RegisterHandler("set", &setHandler)
 
-	createHandler := CreateQuery{
-		Model: model,
-		Bath:  bath,
-	}
+	createHandler := CreateQuery{Core: &core}
 	socketManager.RegisterHandler("create", &createHandler)
 
-	deleteHandler := DeleteQuery{
-		Model: model,
-		Bath:  bath,
-	}
+	deleteHandler := DeleteQuery{Core: &core}
 	socketManager.RegisterHandler("delete", &deleteHandler)
 
-	choicesForHandler := ChoicesForQuery{
-		Model: model,
-		Bath:  bath,
-	}
+	choicesForHandler := ChoicesForQuery{Core: &core}
 	socketManager.RegisterHandler("getChoicesFor", &choicesForHandler)
 
-	customHandler := CustomQuery{
-		Model: model,
-		Bath:  bath,
-	}
+	customHandler := CustomQuery{Core: &core}
 	socketManager.RegisterHandler("custom", &customHandler)
 
 	pingHandler := PingHandler{}
@@ -176,6 +165,8 @@ func Serve(config *ServerConfig) {
 	if err != nil {
 		log.Panic(err)
 	}
+	core.Email = emailHandler
+
 	pdfHandler, err := pdf.GetPdfHandler(*config.PdfBinary, config.PdfConfig, &templateWriter)
 	if err != nil {
 		log.Panic(err)

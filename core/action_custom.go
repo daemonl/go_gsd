@@ -3,13 +3,11 @@ package core
 import (
 	"github.com/daemonl/go_gsd/socket"
 
-	"github.com/daemonl/go_lib/databath"
 	"log"
 )
 
 type CustomQuery struct {
-	Model *databath.Model
-	Bath  *databath.Bath
+	Core *GSDCore
 }
 
 type customQueryRequest struct {
@@ -29,13 +27,13 @@ func (r *CustomQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	}
 	log.Println("CUSTOM")
 
-	customQuery, ok := r.Model.CustomQueries[cqr.QueryName]
+	customQuery, ok := r.Core.Model.CustomQueries[cqr.QueryName]
 	if !ok {
 		log.Printf("No query called '%s'", cqr.QueryName)
 		return
 	}
 
-	results, err := customQuery.Run(r.Bath, cqr.Parameters)
+	results, err := customQuery.Run(r.Core.Bath, cqr.Parameters)
 	if err != nil {
 		log.Println(err.Error())
 		return

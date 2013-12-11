@@ -52,7 +52,7 @@ func (ss *SessionStore) StartExpiry() {
 	for {
 		time.Sleep(time.Second * 10)
 
-		log.Println("CHECK SESSOIN EXPIRY")
+		log.Println("CHECK SESSION EXPIRY")
 		for key, s := range ss.sessions {
 			if time.Since(s.LastRequest).Minutes() > 1 {
 				log.Printf("Expire Session %s", key)

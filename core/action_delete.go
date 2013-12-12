@@ -32,6 +32,7 @@ func (r *DeleteQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	context := databath.MapContext{
 		Fields: make(map[string]interface{}),
 	}
+	context.Fields["me"] = os.Session.User.Id
 
 	query, err := databath.GetQuery(&context, r.Core.Model, qc)
 	if err != nil {

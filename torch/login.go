@@ -18,10 +18,17 @@ func HandleLogout(requestTorch *Request) {
 	requestTorch.Session.AddFlash("success", "Logged Out")
 	requestTorch.Redirect("/")
 }
-func HandleLogin(requestTorch *Request) {
 
+func HandleLogin(requestTorch *Request) {
 	username := requestTorch.PostValueString("username")
 	password := requestTorch.PostValueString("password")
+	doLogin(requestTorch, false, username, password)
+}
+func ForceLogin(requestTorch *Request, email string) {
+	doLogin(requestTorch, true, email, "")
+}
+
+func doLogin(requestTorch *Request, noPassword bool, username string, password string) {
 
 	db := requestTorch.DbConn.GetDB()
 
@@ -34,8 +41,14 @@ func HandleLogin(requestTorch *Request) {
 
 	canHaz := rows.Next()
 	if !canHaz {
+		if noPassword {
+			requestTorch.Session.AddFlash("error", "Database Lookup Error")
+		} else {
+			requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
+		}
+
 		log.Print("No can haz user '" + username + "'")
-		requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
+
 		requestTorch.Redirect("/login")
 		return
 	}
@@ -45,35 +58,42 @@ func HandleLogin(requestTorch *Request) {
 	if err != nil {
 		log.Println("Error on retrieve user from database")
 		log.Println(err.Error())
-		requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
-		requestTorch.Redirect("/login")
-		return
-	}
-
-	log.Printf("Check Password")
-	res, err := user.CheckPassword(password)
-	if err != nil {
-		log.Println(err.Error())
-		requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
-		requestTorch.Redirect("/login")
-		return
-	}
-	if res {
-		target := "/app.html"
-		if requestTorch.Session.LoginTarget != nil {
-			target = *requestTorch.Session.LoginTarget
-		}
-		requestTorch.NewSession(requestTorch.Session.Store)
-		requestTorch.Session.User = &user
-		if user.SetOnNextLogin {
-			requestTorch.Redirect("/set_password")
+		if noPassword {
+			requestTorch.Session.AddFlash("error", "Invalid User Identifier")
 		} else {
-			requestTorch.Redirect(target)
+			requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
 		}
 
-	} else {
-		requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
 		requestTorch.Redirect("/login")
+		return
 	}
+
+	if !noPassword {
+		log.Printf("Check Password")
+		res, err := user.CheckPassword(password)
+		if err != nil {
+			log.Println(err.Error())
+			requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
+			requestTorch.Redirect("/login")
+			return
+		}
+		if !res {
+			requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
+			requestTorch.Redirect("/login")
+		}
+	}
+
+	target := "/app.html"
+	if requestTorch.Session.LoginTarget != nil {
+		target = *requestTorch.Session.LoginTarget
+	}
+	requestTorch.NewSession(requestTorch.Session.Store)
+	requestTorch.Session.User = &user
+	if user.SetOnNextLogin {
+		requestTorch.Redirect("/set_password")
+	} else {
+		requestTorch.Redirect(target)
+	}
+
 	log.Printf("Done Check Password")
 }

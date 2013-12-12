@@ -10,6 +10,7 @@ import (
 	"github.com/daemonl/go_gsd/view"
 	"github.com/daemonl/go_lib/databath"
 	"github.com/daemonl/go_lib/databath/sync"
+	"github.com/daemonl/go_lib/google_auth"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"net/http"
@@ -61,6 +62,8 @@ type ServerConfig struct {
 	PdfConfig *pdf.PdfHandlerConfig
 	PdfFile   *string `json:"pdfFile"`
 	PdfBinary *string `json:"pdfBinary"`
+
+	OAuthConfig *google_auth.OAuthConfig `json:"oauth"`
 
 	ViewManager *view.ViewManager
 }
@@ -173,6 +176,14 @@ func Serve(config *ServerConfig) {
 	}
 	fileHandler := file.GetFileHandler(config.UploadDirectory, parser.Bath, model)
 	csvHandler := csv.GetCsvHandler(parser.Bath, model)
+
+	if config.OAuthConfig != nil {
+		oauthHandler := google_auth.OAuthHandler{
+			Config: config.OAuthConfig,
+		}
+		http.HandleFunc("/oauth/return", parser.Wrap(oauthHandler.OauthResponse))
+		http.HandleFunc("/oauth/request", parser.Wrap(oauthHandler.OauthRequest))
+	}
 
 	fallthroughHandler := GetFallthroughHandler(config)
 

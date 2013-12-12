@@ -56,6 +56,12 @@ func (h *Hooker) DoPreHooks(as *ActionSummary) {
 			if exists {
 				continue
 			}
+			vString, ok := v.(string)
+			if ok {
+				if vString == "#me" {
+					v = as.User.Id
+				}
+			}
 			as.Fields[k] = v
 		}
 

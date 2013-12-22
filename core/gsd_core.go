@@ -11,4 +11,5 @@ type GSDCore struct {
 	Model  *databath.Model
 	Email  *email.EmailHandler
 	Hooker *Hooker
+	Config *ServerConfig
 }

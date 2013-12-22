@@ -78,8 +78,10 @@ func doLogin(requestTorch *Request, noPassword bool, username string, password s
 			return
 		}
 		if !res {
+			log.Printf("PASSWORD MISMATCH '%s'\n", password)
 			requestTorch.Session.AddFlash("error", "The presented credentials were incorrect. Please try again.")
 			requestTorch.Redirect("/login")
+			return
 		}
 	}
 

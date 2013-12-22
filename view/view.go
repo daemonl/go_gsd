@@ -11,13 +11,15 @@ import (
 type ViewManager struct {
 	rootTemplate *template.Template
 	pattern      string
+	IncludeRoot  string
 }
 
-func GetViewManager(dir string) *ViewManager {
+func GetViewManager(dir string, IncludeRoot string) *ViewManager {
 	log.Println("Load View Manager")
 	pattern := filepath.Join(dir, "*.html")
 	viewManager := ViewManager{
-		pattern: pattern,
+		pattern:     pattern,
+		IncludeRoot: IncludeRoot,
 	}
 	err := viewManager.Reload()
 	if err != nil {
@@ -50,12 +52,14 @@ type ViewHandler struct {
 type ViewData struct {
 	Session *torch.Session
 	Data    interface{}
+	Root    string
 }
 
 func (vh *ViewHandler) Handle(r *torch.Request) {
 	d := ViewData{
 		Session: r.Session,
 		Data:    vh.Data,
+		Root:    vh.Manager.IncludeRoot,
 	}
 	err := vh.Manager.Render(r.GetWriter(), vh.TemplateName, &d)
 	if err != nil {

@@ -47,13 +47,14 @@ type ServerConfig_Database struct {
 	PoolSize       int    `json:"poolSize"`
 }
 type ServerConfig struct {
-	Database          ServerConfig_Database `json:"database"`
-	ModelFile         string                `json:"modelFile"`
-	TemplateRoot      string                `json:"templateRoot"`
-	WebRoot           string                `json:"webRoot"`
-	BindAddress       string                `json:"bindAddress"`
-	PublicPatternsRaw []string              `json:"publicPatterns"`
-	UploadDirectory   string                `json:"uploadDirectory"`
+	Database            ServerConfig_Database `json:"database"`
+	ModelFile           string                `json:"modelFile"`
+	TemplateRoot        string                `json:"templateRoot"`
+	WebRoot             string                `json:"webRoot"`
+	BindAddress         string                `json:"bindAddress"`
+	PublicPatternsRaw   []string              `json:"publicPatterns"`
+	UploadDirectory     string                `json:"uploadDirectory"`
+	TemplateIncludeRoot string                `json:"templateIncludeRoot"`
 
 	EmailConfig *email.EmailHandlerConfig
 	EmailFile   *string           `json:"emailFile"`
@@ -95,8 +96,9 @@ func Serve(config *ServerConfig) {
 	}
 
 	core := GSDCore{
-		Bath:  bath,
-		Model: model,
+		Bath:   bath,
+		Model:  model,
+		Config: config,
 	}
 	h := Hooker{
 		Core: &core,
@@ -115,7 +117,7 @@ func Serve(config *ServerConfig) {
 		parser.PublicPatterns[i] = reg
 	}
 
-	config.ViewManager = view.GetViewManager(config.TemplateRoot)
+	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
 
 	templateWriter := view.TemplateWriter{
 		Bath:        bath,
@@ -208,6 +210,7 @@ func Serve(config *ServerConfig) {
 
 	err = http.ListenAndServe(config.BindAddress, nil)
 	if err != nil {
+
 		log.Panic(err)
 	}
 	log.Println("Server Stopped")

@@ -70,22 +70,49 @@ func (h *Hooker) DoPreHooks(as *ActionSummary) {
 func (h *Hooker) DoPostHooks(as *ActionSummary) {
 	go h.WriteHistory(as)
 	for _, hook := range as.Collection.Hooks {
-		if hook.Email == nil {
-			continue
-		}
-		if hook.When.What != as.Action {
-			continue
-		}
-		log.Println("HOOK: " + hook.Collection)
+		log.Println("Q$#@ERWSG%VDY")
+		if hook.CustomAction != nil {
+			log.Println("HOOK CUSTOM ACTION: " + hook.Collection)
+			p := make([]interface{}, len(hook.Raw.InFields), len(hook.Raw.InFields))
+			for i, rawField := range hook.Raw.InFields {
+				val, ok := rawField["val"]
+				if !ok {
+					log.Println("No 'val' in custom query hook value")
+					return
+				}
+				str, ok := val.(string)
+				if ok {
+					if str == "#id" {
+						val = as.Pk
+					}
+				}
+				p[i] = val
+			}
+			results, err := hook.CustomAction.Run(h.Core.Bath, p)
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
+			log.Println(results)
 
-		_, ok := as.Fields[hook.When.Field]
-		if !ok {
-			continue
 		}
+		if hook.Email != nil {
 
-		// WOOT, Hook Matches. Let's Do this shit.
-		log.Println("Send Email " + hook.Email.Template + " TO " + hook.Email.Recipient)
-		go h.Core.Email.SendMailNow(hook.Email.Template, as.Pk, hook.Email.Recipient, "", nil)
+			if hook.When.What != as.Action {
+				continue
+			}
+			log.Println("HOOK: " + hook.Collection)
+
+			_, ok := as.Fields[hook.When.Field]
+			if !ok {
+				continue
+			}
+
+			// WOOT, Hook Matches. Let's Do this shit.
+			log.Println("Send Email " + hook.Email.Template + " TO " + hook.Email.Recipient)
+			go h.Core.Email.SendMailNow(hook.Email.Template, as.Pk, hook.Email.Recipient, "", nil)
+
+		}
 	}
 }
 

@@ -58,7 +58,7 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 
 	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("Error building insert: %s", err)
 		os.SendError(responseId, err)
 		return
 	}

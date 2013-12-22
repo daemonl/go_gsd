@@ -79,6 +79,7 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		os.SendError(responseId, err)
 		return
 	}
+	actionSummary.Pk = uint64(id)
 	result := createResult{
 		Status:   "OK",
 		Message:  "Success",

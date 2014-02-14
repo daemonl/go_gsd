@@ -1,12 +1,17 @@
 package torch
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strings"
+
+	"strconv"
 	"time"
 )
 
@@ -47,6 +52,48 @@ func InMemorySessionStore() *SessionStore {
 	return &ss
 }
 
+func (ss *SessionStore) DumpSessions(w io.Writer) {
+	for _, session := range ss.sessions {
+		if session.Key != nil && session.User != nil {
+			w.Write([]byte(fmt.Sprintf("%s|%d\n", *session.Key, session.User.Id)))
+		}
+	}
+}
+
+func (ss *SessionStore) LoadSessions(r io.Reader, loadUser func(uint64) (*User, error)) {
+	lr := bufio.NewReader(r)
+	for {
+		line, err := lr.ReadString('\n')
+		if err != nil {
+			log.Println(err)
+			break
+		}
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		userId, err := strconv.ParseUint(strings.TrimSpace(parts[1]), 10, 64)
+		if err != nil {
+			log.Println("Error loading session: %s\n", err)
+			continue
+		}
+		s := &Session{
+			Key:         &parts[0],
+			Store:       ss,
+			LastRequest: time.Now(),
+		}
+		user, err := loadUser(userId)
+		if err != nil {
+			log.Println("Error loading session: %s\n", err)
+			continue
+		}
+		s.User = user
+		log.Printf("Hidrated session for user %d\n%s\n", user.Id, s.Key)
+		ss.sessions[*s.Key] = s
+
+	}
+}
+
 func (ss *SessionStore) StartExpiry() {
 
 	for {
@@ -54,7 +101,7 @@ func (ss *SessionStore) StartExpiry() {
 
 		log.Println("CHECK SESSION EXPIRY")
 		for key, s := range ss.sessions {
-			if time.Since(s.LastRequest).Minutes() > 1 {
+			if time.Since(s.LastRequest).Minutes() > 30 {
 				log.Printf("Expire Session %s", key)
 				delete(ss.sessions, key)
 			}
@@ -110,6 +157,4 @@ func (request *Request) NewSession(store *SessionStore) {
 	request.Session = store.NewSession()
 	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 3600, Value: *request.Session.Key}
 	request.writer.Header().Add("Set-Cookie", c.String())
-	//request.writer.Header().Add("Set-Cookie", fmt.Sprintf("gsd_session=%s", *request.Session.Key))
-	//log.Printf("Generate New Session %s", *request.Session.Key)
 }

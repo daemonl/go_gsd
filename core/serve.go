@@ -14,8 +14,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
-	"strings"
 )
 
 func checkHandle(requestTorch *torch.Request) {
@@ -30,15 +31,6 @@ func signupHandle(requestTorch *torch.Request) {
 	password := requestTorch.PostValueString("password")
 	hashStore := torch.HashPassword(password)
 	requestTorch.Write(hashStore)
-}
-
-func pdfHandle(requestTorch *torch.Request) {
-	in := strings.NewReader("<html><head></head><body style='font-family: ArialMT'>Hello World</body></html>")
-	w := requestTorch.GetWriter()
-	err := pdf.DoPdf("/Applications/wkhtmltopdf.app/Contents/MacOS/wkhtmltopdf", in, w)
-	if err != nil {
-		log.Println(err)
-	}
 }
 
 type ServerConfig_Database struct {
@@ -56,9 +48,10 @@ type ServerConfig struct {
 	UploadDirectory     string                `json:"uploadDirectory"`
 	TemplateIncludeRoot string                `json:"templateIncludeRoot"`
 
-	EmailConfig *email.EmailHandlerConfig
-	EmailFile   *string           `json:"emailFile"`
-	SmtpConfig  *email.SmtpConfig `json:"smtpConfig"`
+	EmailConfig     *email.EmailHandlerConfig
+	EmailFile       *string           `json:"emailFile"`
+	SmtpConfig      *email.SmtpConfig `json:"smtpConfig"`
+	SessionDumpFile *string           `json:"sessionDumpFile"`
 
 	PdfConfig *pdf.PdfHandlerConfig
 	PdfFile   *string `json:"pdfFile"`
@@ -110,6 +103,24 @@ func Serve(config *ServerConfig) {
 		Store:          torch.InMemorySessionStore(),
 		Bath:           bath,
 		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
+	}
+
+	if config.SessionDumpFile != nil {
+		log.Println("-\n========\nHIDRATE SESSIONS\n========")
+
+		sessFile, err := os.Open(*config.SessionDumpFile)
+		if err != nil {
+			log.Printf("Could not load sessions: %s\n", err.Error())
+		} else {
+			conn := bath.GetConnection()
+			db := conn.GetDB()
+			parser.Store.LoadSessions(sessFile, func(id uint64) (*torch.User, error) {
+				return torch.LoadUserById(db, id)
+			})
+			conn.Release()
+			sessFile.Close()
+		}
+		log.Println("-\n========\nEND SESSIONS\n========")
 	}
 
 	for i, pattern := range config.PublicPatternsRaw {
@@ -208,10 +219,38 @@ func Serve(config *ServerConfig) {
 	http.Handle("/socket", socketManager.GetListener())
 	http.HandleFunc("/", parser.Wrap(fallthroughHandler.Handle))
 
-	err = http.ListenAndServe(config.BindAddress, nil)
-	if err != nil {
+	go func() {
+		err = http.ListenAndServe(config.BindAddress, nil)
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 
-		log.Panic(err)
+	sigChan := make(chan os.Signal)
+
+	signal.Notify(sigChan, os.Interrupt)
+
+	for {
+		sigVal := <-sigChan
+		log.Printf("SIG %s\n", sigVal.String())
+		if sigVal == os.Interrupt {
+			break
+		}
 	}
-	log.Println("Server Stopped")
+
+	log.Printf("= SHUTDOWN INITIATED")
+
+	if config.SessionDumpFile != nil {
+		log.Println("-\n========\nDUMP SESSIONS\n========")
+
+		sessFile, err := os.Create(*config.SessionDumpFile)
+		if err != nil {
+			log.Printf("Could not save sessions: %s\n", err.Error())
+		} else {
+			parser.Store.DumpSessions(sessFile)
+			sessFile.Close()
+		}
+	}
+
+	log.Println("= SHUTDOWN COMPLETE ")
 }

@@ -1,6 +1,8 @@
 package torch
 
 import (
+	"database/sql"
+	"errors"
 	"log"
 )
 
@@ -28,6 +30,20 @@ func ForceLogin(requestTorch *Request, email string) {
 	doLogin(requestTorch, true, email, "")
 }
 
+func LoadUserById(db *sql.DB, id uint64) (*User, error) {
+	rows, err := db.Query(`SELECT id, username, password, access, set_on_next_login FROM staff WHERE id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	if !rows.Next() {
+		return nil, errors.New("Could not find a user in the session store")
+	}
+
+	user := &User{}
+	rows.Scan(&user.Id, &user.Username, &user.password, &user.Access, &user.SetOnNextLogin)
+	rows.Close()
+	return user, nil
+}
 func doLogin(requestTorch *Request, noPassword bool, username string, password string) {
 
 	db := requestTorch.DbConn.GetDB()

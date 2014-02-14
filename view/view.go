@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"path/filepath"
+	"strings"
 )
 
 type ViewManager struct {
@@ -15,7 +16,7 @@ type ViewManager struct {
 }
 
 func GetViewManager(dir string, IncludeRoot string) *ViewManager {
-	log.Println("Load View Manager")
+	log.Println("Load View Manager. Template Root: " + IncludeRoot)
 	pattern := filepath.Join(dir, "*.html")
 	viewManager := ViewManager{
 		pattern:     pattern,
@@ -29,7 +30,16 @@ func GetViewManager(dir string, IncludeRoot string) *ViewManager {
 }
 
 func (vm *ViewManager) Reload() error {
-	templates, err := template.ParseGlob(vm.pattern)
+	t := template.New("unnamed")
+	t.Funcs(map[string]interface{}{
+		"htmlLineBreaks": func(in string) template.HTML {
+			log.Println(in)
+			safe := template.HTMLEscapeString(in)
+			log.Println(safe)
+			return template.HTML(strings.Replace(safe, "\n", "<br/>", -1))
+		},
+	})
+	templates, err := t.ParseGlob(vm.pattern)
 	if err != nil {
 		log.Println(err)
 		return err

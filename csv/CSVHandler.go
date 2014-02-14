@@ -47,6 +47,9 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 		requestTorch.DoError(err)
 		return
 	}
+	var neg1 int64 = -1
+	rawQuery.Limit = &neg1
+	rawQuery.Offset = nil
 
 	qc, err := rawQuery.TranslateToQuery()
 	if err != nil {
@@ -81,20 +84,32 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 	w.Header().Add("content-type", "text/csv")
 	w.Header().Add("Content-Disposition", "attachment; filename="+filename)
 	csvWriter := csv.NewWriter(w)
-	first := true
+
+	cols := []string{}
+	if len(rows) < 0 {
+		return
+	}
+
+	cols, err = query.GetColNames()
+	if err != nil {
+		log.Print(err)
+		requestTorch.DoError(err)
+	}
+
+	csvWriter.Write(cols)
+
 	for _, row := range rows {
-		if first {
-			header := make([]string, 0, 0)
-			for k, _ := range row {
-				header = append(header, fmt.Sprintf("%v", k))
+		record := make([]string, len(cols), len(cols))
+		for i, col := range cols {
+			v, ok := row[col]
+			if ok && v != nil {
+				record[i] = fmt.Sprintf("%v", v)
+			} else {
+				record[i] = ""
 			}
-			csvWriter.Write(header)
-			first = false
+
 		}
-		record := make([]string, 0, 0)
-		for _, v := range row {
-			record = append(record, fmt.Sprintf("%v", v))
-		}
+
 		csvWriter.Write(record)
 	}
 	csvWriter.Flush()

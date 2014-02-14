@@ -89,6 +89,7 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 
 	data := ViewData{
 		Data: emailParameters,
+		Root: h.ViewManager.IncludeRoot,
 	}
 
 	if requestTorch != nil {

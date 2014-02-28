@@ -36,6 +36,7 @@ func (r *CustomQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 	results, err := customQuery.Run(r.Core.Bath, cqr.Parameters)
 	if err != nil {
 		log.Println(err.Error())
+		os.SendError(responseId, err)
 		return
 	}
 

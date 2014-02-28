@@ -18,13 +18,16 @@ func (q *SelectQuery) GetRequestObject() interface{} {
 
 func (r *SelectQuery) HandleRequest(os *socket.OpenSocket, requestObject interface{}, responseId string) {
 	fmt.Println("HR SELECT")
+
 	rawQueryCondition, ok := requestObject.(*databath.RawQueryConditions)
 	if !ok {
+
 		fmt.Println("Not Correct Type")
 		return
 	}
 	queryConditions, err := rawQueryCondition.TranslateToQuery()
 	if err != nil {
+		os.SendError(responseId, err)
 		fmt.Println("E", err)
 		return
 	}
@@ -37,17 +40,20 @@ func (r *SelectQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 
 	query, err := databath.GetQuery(&context, r.Core.Model, queryConditions)
 	if err != nil {
+		os.SendError(responseId, err)
 		fmt.Println("E", err)
 		return
 	}
 	sqlString, parameters, err := query.BuildSelect()
 	if err != nil {
+		os.SendError(responseId, err)
 		fmt.Println("E", err)
 		return
 	}
 
 	allRows, err := query.RunQueryWithResults(r.Core.Bath, sqlString, parameters)
 	if err != nil {
+		os.SendError(responseId, err)
 		fmt.Println("E", err)
 		return
 	}

@@ -47,6 +47,7 @@ type ServerConfig struct {
 	PublicPatternsRaw   []string              `json:"publicPatterns"`
 	UploadDirectory     string                `json:"uploadDirectory"`
 	TemplateIncludeRoot string                `json:"templateIncludeRoot"`
+	ScriptDirectory     string                `json:"scriptDirectory"`
 
 	EmailConfig     *email.EmailHandlerConfig
 	EmailFile       *string           `json:"emailFile"`
@@ -155,6 +156,9 @@ func Serve(config *ServerConfig) {
 
 	customHandler := CustomQuery{Core: &core}
 	socketManager.RegisterHandler("custom", &customHandler)
+
+	dynamicHandler := GetDynamicHandlerFromCore(&core)
+	socketManager.RegisterHandler("dynamic", dynamicHandler)
 
 	pingHandler := PingHandler{}
 	socketManager.RegisterHandler("ping", &pingHandler)

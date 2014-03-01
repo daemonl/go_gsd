@@ -155,6 +155,6 @@ func (request *Request) Redirect(to string) {
 
 func (request *Request) NewSession(store *SessionStore) {
 	request.Session = store.NewSession()
-	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 3600, Value: *request.Session.Key}
+	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 86400, Value: *request.Session.Key}
 	request.writer.Header().Add("Set-Cookie", c.String())
 }

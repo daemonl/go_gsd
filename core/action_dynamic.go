@@ -11,8 +11,8 @@ type DynamicHandler struct {
 	Runner *dynamic.DynamicRunner
 }
 type dynamicRequest struct {
-	FunctionName string        `json:"function"`
-	Parameters   []interface{} `json:"parameters"`
+	FunctionName string                 `json:"function"`
+	Parameters   map[string]interface{} `json:"parameters"`
 }
 
 func GetDynamicHandlerFromCore(core *GSDCore) *DynamicHandler {
@@ -46,7 +46,7 @@ func (r *DynamicHandler) HandleRequest(os *socket.OpenSocket, requestObject inte
 		return
 	}
 
-	res, err := dr.Run(fnConfig.Filename)
+	res, err := dr.Run(fnConfig.Filename, cqr.Parameters)
 	if err != nil {
 		log.Println(err.Error())
 		os.SendError(responseId, err)

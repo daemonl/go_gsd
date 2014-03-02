@@ -24,7 +24,7 @@ type RunContext struct {
 	EndChan      chan bool
 }
 
-func (dr *DynamicRunner) Run(filename string) (interface{}, error) {
+func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}) (interface{}, error) {
 
 	file, err := os.Open(dr.BaseDirectory + filename)
 	if err != nil {
@@ -49,6 +49,7 @@ func (dr *DynamicRunner) Run(filename string) (interface{}, error) {
 
 	rc.otto.Interrupt = make(chan func())
 
+	rc.otto.Set("args", parameters)
 	rc.otto.Set("sqlExec", rc.SqlExec)
 	rc.otto.Set("sqlQuery", rc.SqlQuery)
 	rc.otto.Set("fail", rc.Fail)

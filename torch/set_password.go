@@ -17,11 +17,11 @@ func HandleSetPassword(r *Request) {
 
 	if len(currentPassword) < 1 {
 		// Is user exempt?
-		if !r.Session.User.SetOnNextLogin {
-			r.Session.AddFlash("error", "Incorrect current password")
-			r.Redirect("/set_password")
-			return
-		}
+		//if !r.Session.User.SetOnNextLogin {
+		//	r.Session.AddFlash("error", "Incorrect current password")
+		//	r.Redirect("/set_password")
+		//	return
+		//}
 	} else {
 		//Check Current Password
 		matches, err := r.Session.User.CheckPassword(currentPassword)
@@ -39,6 +39,7 @@ func HandleSetPassword(r *Request) {
 	}
 
 	/// Is it secure enough?
+	// TODO:... something useful.
 	if len(newPassword1) < 5 {
 		r.Session.AddFlash("error", "Password must be at least 5 characters long")
 		r.Redirect("/set_password")

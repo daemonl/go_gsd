@@ -39,7 +39,7 @@ func (r *ChoicesForQuery) HandleRequest(os *socket.OpenSocket, requestObject int
 		return
 	}
 
-	refField, ok := field.(*types.FieldRef)
+	refField, ok := field.Impl.(*types.FieldRef)
 	if !ok {
 		return
 	}

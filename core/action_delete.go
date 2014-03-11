@@ -1,10 +1,11 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"github.com/daemonl/go_gsd/socket"
-
 	"github.com/daemonl/go_lib/databath"
+	"strings"
 )
 
 type DeleteQuery struct {
@@ -36,21 +37,42 @@ func (r *DeleteQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 
 	query, err := databath.GetQuery(&context, r.Core.Model, qc)
 	if err != nil {
-		fmt.Println(err)
+		os.SendError(responseId, err)
 		return
 	}
-	sqlString, err := query.BuildDelete(deleteRequest.Id)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(sqlString)
+
 	c := r.Core.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
+
+	deleteCheckResult, err := query.CheckDelete(db, deleteRequest.Id)
+	if err != nil {
+		os.SendError(responseId, err)
+		return
+	}
+
+	if deleteCheckResult.Prevents {
+		msg := "Could not delete, as owners exist: \n" + strings.Join(deleteCheckResult.GetIssues(), "\n")
+		os.SendError(responseId, errors.New(msg))
+		return
+	}
+
+	err = deleteCheckResult.ExecuteRecursive(db)
+	if err != nil {
+		os.SendError(responseId, err)
+		return
+	}
+
+	sqlString, err := query.BuildDelete(deleteRequest.Id)
+	if err != nil {
+		os.SendError(responseId, err)
+		return
+	}
+	fmt.Println(sqlString)
+
 	_, err = db.Exec(sqlString)
 	if err != nil {
-		fmt.Println(err)
+		os.SendError(responseId, err)
 		return
 	}
 

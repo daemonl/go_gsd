@@ -50,7 +50,11 @@ func (os *OpenSocket) Wait() {
 	}
 }
 func (os *OpenSocket) SendObject(functionName string, responseId string, object interface{}) {
-	bytes, _ := json.Marshal(object)
+	bytes, err := json.Marshal(object)
+	if err != nil {
+		os.SendError(responseId, err)
+		return
+	}
 	m := StringSocketMessage{FunctionName: functionName, ResponseId: responseId, Message: string(bytes)}
 	os.Sender <- &m
 }

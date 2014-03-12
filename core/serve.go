@@ -78,7 +78,10 @@ func Serve(config *ServerConfig) {
 
 	model, err := databath.ReadModelFromFile(config.ModelFile)
 	if err != nil {
-		panic("COULD NOT READ MODEL :" + err.Error())
+		log.Println("COULD NOT READ MODEL FILE")
+		log.Println(err.Error())
+		log.Println("EXIT")
+		return
 	}
 
 	// IF IT IS TO SYNC, STOP HERE (--sync)

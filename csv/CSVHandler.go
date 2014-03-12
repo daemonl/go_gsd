@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/go_lib/databath/types"
 	"log"
 	"net/url"
 	"time"
@@ -85,25 +86,40 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 	w.Header().Add("Content-Disposition", "attachment; filename="+filename)
 	csvWriter := csv.NewWriter(w)
 
-	cols := []string{}
 	if len(rows) < 0 {
 		return
 	}
 
-	cols, err = query.GetColNames()
+	mappedFields, err := query.GetFields()
+
 	if err != nil {
 		log.Print(err)
 		requestTorch.DoError(err)
 	}
 
-	csvWriter.Write(cols)
+	colNames, err := query.GetColNames()
+	if err != nil {
+		log.Print(err)
+		requestTorch.DoError(err)
+	}
+	csvWriter.Write(colNames)
 
 	for _, row := range rows {
-		record := make([]string, len(cols), len(cols))
-		for i, col := range cols {
-			v, ok := row[col]
+		record := make([]string, len(colNames), len(colNames))
+		for i, colName := range colNames {
+			v, ok := row[colName]
+
 			if ok && v != nil {
-				record[i] = fmt.Sprintf("%v", v)
+				field, ok := mappedFields[colName]
+				if !ok {
+					log.Printf("No field %s in %#v\n", colName, mappedFields)
+				}
+				switch fieldImpl := field.Impl.(type) {
+				case *types.FieldEnum:
+					record[i] = fieldImpl.Choices[v.(string)]
+				default:
+					record[i] = fmt.Sprintf("%v", v)
+				}
 			} else {
 				record[i] = ""
 			}

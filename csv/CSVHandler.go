@@ -9,6 +9,7 @@ import (
 	"github.com/daemonl/go_lib/databath/types"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -97,14 +98,37 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 		requestTorch.DoError(err)
 	}
 
-	colNames, err := query.GetColNames()
+	allColNames, err := query.GetColNames()
 	if err != nil {
 		log.Print(err)
 		requestTorch.DoError(err)
 	}
+
+	colNames := make([]string, 0, 0)
+	for _, colName := range allColNames {
+		if colName == "id" {
+			continue
+		}
+		if strings.HasPrefix(colName, "-") {
+			continue
+		}
+		if strings.HasPrefix(colName, "#") {
+			continue
+		}
+		if strings.HasSuffix(colName, "id") {
+			continue
+		}
+
+		colNames = append(colNames, colName)
+
+	}
+
 	csvWriter.Write(colNames)
 
+	// TODO: Type assertions etc are done on each row... this seems rather inefficient.
+
 	for _, row := range rows {
+
 		record := make([]string, len(colNames), len(colNames))
 		for i, colName := range colNames {
 			v, ok := row[colName]
@@ -123,7 +147,6 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 			} else {
 				record[i] = ""
 			}
-
 		}
 
 		csvWriter.Write(record)

@@ -132,14 +132,6 @@ func Serve(config *ServerConfig) {
 		parser.PublicPatterns[i] = reg
 	}
 
-	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
-
-	templateWriter := view.TemplateWriter{
-		Bath:        bath,
-		Model:       model,
-		ViewManager: config.ViewManager,
-	}
-
 	socketManager := socket.GetManager(parser.Store)
 
 	getHandler := SelectQuery{Core: &core}
@@ -165,6 +157,15 @@ func Serve(config *ServerConfig) {
 
 	pingHandler := PingHandler{}
 	socketManager.RegisterHandler("ping", &pingHandler)
+
+	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
+
+	templateWriter := view.TemplateWriter{
+		Bath:        bath,
+		Model:       model,
+		ViewManager: config.ViewManager,
+		Runner:      dynamicHandler.Runner,
+	}
 
 	loginViewHandler := view.ViewHandler{
 		Manager:      config.ViewManager,

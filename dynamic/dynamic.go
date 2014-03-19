@@ -24,7 +24,7 @@ type RunContext struct {
 	EndChan      chan bool
 }
 
-func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}) (interface{}, error) {
+func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}) (map[string]interface{}, error) {
 
 	file, err := os.Open(dr.BaseDirectory + filename)
 	if err != nil {

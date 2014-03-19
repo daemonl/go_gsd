@@ -3,6 +3,7 @@ package view
 import (
 	"errors"
 	"fmt"
+	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_lib/databath"
 	"io"
@@ -16,12 +17,14 @@ type TemplateConfig struct {
 	TemplateFile string                                  `json:"templateFile"`
 	Collection   string                                  `json:"collection"`
 	Queries      map[string]*databath.RawQueryConditions `json:"queries"`
+	ScriptName   string                                  `json:"script"`
 }
 
 type TemplateWriter struct {
 	Bath        *databath.Bath
 	Model       *databath.Model
 	ViewManager *ViewManager
+	Runner      *dynamic.DynamicRunner
 }
 
 func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryConditions, context *databath.MapContext) ([]map[string]interface{}, error) {
@@ -84,11 +87,31 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 			return err
 		}
 		emailParameters[key] = results2
+	}
 
+	javascriptData := map[string]interface{}{}
+
+	if len(templateConfig.ScriptName) > 0 {
+		queryMap := map[string]string{}
+		//_, req := requestTorch.GetRaw()
+		//query := req.URL.Query().Get(key)
+		scriptParameters := map[string]interface{}{
+			"context":      context.Fields,
+			"id":           rootId,
+			"fieldset":     fieldset,
+			"requestQuery": queryMap,
+			"queries":      emailParameters,
+		}
+		javascriptData, err = h.Runner.Run(templateConfig.ScriptName, scriptParameters)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
 	}
 
 	data := ViewData{
 		Data: emailParameters,
+		D:    javascriptData,
 		Root: h.ViewManager.IncludeRoot,
 	}
 

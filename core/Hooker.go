@@ -2,29 +2,16 @@ package core
 
 import (
 	"fmt"
+	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_lib/databath"
 	"log"
 	"time"
 )
 
-//type Hook struct {
-//	Collection string                 `json:"collection"`
-//	When       HookWhen               `json:"when"`
-//	Set        map[string]interface{} `json:"set"`
-//	Email      *HookEmail              `json:"email"`
-//}
-//type HookWhen struct {
-//	Field string `json:"field"`
-//	What  string `json:"what"`
-//}
-//type HookEmail struct {
-//	Recipient string `json:"recipient"`
-//	Template  string `json:"template"`
-//}
-
 type Hooker struct {
-	Core *GSDCore
+	Core   *GSDCore
+	Runner *dynamic.DynamicRunner
 }
 
 type ActionSummary struct {
@@ -69,8 +56,10 @@ func (h *Hooker) DoPreHooks(as *ActionSummary) {
 }
 func (h *Hooker) DoPostHooks(as *ActionSummary) {
 	go h.WriteHistory(as)
+
+	log.Println("PROCESS POST HOOKS")
+
 	for _, hook := range as.Collection.Hooks {
-		log.Println("Q$#@ERWSG%VDY")
 		if hook.CustomAction != nil {
 			log.Println("HOOK CUSTOM ACTION: " + hook.Collection)
 			p := make([]interface{}, len(hook.Raw.InFields), len(hook.Raw.InFields))
@@ -94,6 +83,32 @@ func (h *Hooker) DoPostHooks(as *ActionSummary) {
 				return
 			}
 			log.Println(results)
+		}
+		for _, scriptName := range hook.Scripts {
+
+			log.Printf("Hook Script %s\n", scriptName)
+
+			scriptMap := map[string]interface{}{
+				"userId":     as.User.Id,
+				"action":     as.Action,
+				"collection": as.Collection.TableName,
+				"id":         as.Pk,
+				"fields":     as.Fields,
+			}
+
+			dr := h.Runner
+
+			fnConfig, ok := h.Core.Model.DynamicFunctions[scriptName]
+			if !ok {
+				log.Printf("No registered dynamic function named '%s'", scriptName)
+				return
+			}
+
+			_, err := dr.Run(fnConfig.Filename, scriptMap)
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
 
 		}
 		if hook.Email != nil {

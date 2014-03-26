@@ -65,7 +65,6 @@ func (ss *SessionStore) LoadSessions(r io.Reader, loadUser func(uint64) (*User, 
 	for {
 		line, err := lr.ReadString('\n')
 		if err != nil {
-			log.Println(err)
 			break
 		}
 		parts := strings.SplitN(line, "|", 2)
@@ -88,7 +87,7 @@ func (ss *SessionStore) LoadSessions(r io.Reader, loadUser func(uint64) (*User, 
 			continue
 		}
 		s.User = user
-		log.Printf("Hidrated session for user %d\n%s\n", user.Id, s.Key)
+		log.Printf("Hidrated session for user %d\n", user.Id)
 		ss.sessions[*s.Key] = s
 
 	}

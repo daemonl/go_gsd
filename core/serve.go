@@ -97,6 +97,7 @@ func Serve(config *ServerConfig) {
 		Model:  model,
 		Config: config,
 	}
+
 	h := Hooker{
 		Core: &core,
 	}
@@ -159,6 +160,8 @@ func Serve(config *ServerConfig) {
 	socketManager.RegisterHandler("ping", &pingHandler)
 
 	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
+
+	core.Hooker.Runner = dynamicHandler.Runner
 
 	templateWriter := view.TemplateWriter{
 		Bath:        bath,

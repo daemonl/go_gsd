@@ -38,7 +38,6 @@ func (r *DynamicHandler) HandleRequest(os *socket.OpenSocket, requestObject inte
 	if !ok {
 		return
 	}
-	log.Println("DYNAMIC")
 
 	fnConfig, ok := r.Core.Model.DynamicFunctions[cqr.FunctionName]
 	if !ok {

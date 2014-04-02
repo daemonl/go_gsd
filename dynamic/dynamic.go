@@ -13,6 +13,7 @@ import (
 type DynamicRunner struct {
 	BaseDirectory string
 	DataBath      *databath.Bath
+	SendMail      func(to string, subject string, body string)
 }
 
 type RunContext struct {
@@ -52,6 +53,7 @@ func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{})
 	rc.otto.Set("args", parameters)
 	rc.otto.Set("sqlExec", rc.SqlExec)
 	rc.otto.Set("sqlQuery", rc.SqlQuery)
+	rc.otto.Set("sendMail", rc.SendMail)
 	rc.otto.Set("fail", rc.Fail)
 	rc.otto.Set("setResponseVal", rc.SetResponseVal)
 	rc.otto.Set("end", rc.End)
@@ -134,9 +136,34 @@ func (rc *RunContext) SetResponseVal(call otto.FunctionCall) otto.Value {
 	return otto.NullValue()
 }
 
+func (rc *RunContext) SendMail(call otto.FunctionCall) otto.Value {
+
+	if len(call.ArgumentList) < 3 {
+		return rc.Err("sendMail called with too few parameters")
+	}
+
+	to, err := call.ArgumentList[0].ToString()
+	if err != nil {
+		return rc.Err(err.Error())
+	}
+
+	subject, err := call.ArgumentList[1].ToString()
+	if err != nil {
+		return rc.Err(err.Error())
+	}
+
+	body, err := call.ArgumentList[2].ToString()
+	if err != nil {
+		return rc.Err(err.Error())
+	}
+
+	rc.runner.SendMail(to, subject, body)
+
+	return otto.NullValue()
+
+}
 func (rc *RunContext) SqlExec(call otto.FunctionCall) otto.Value {
 
-	log.Println("EXEC")
 	if len(call.ArgumentList) < 2 {
 		return rc.Err("Sql query called with too few parameters")
 	}
@@ -163,10 +190,21 @@ func (rc *RunContext) SqlExec(call otto.FunctionCall) otto.Value {
 		return rc.Err(err.Error())
 	}
 
-	id, _ := res.LastInsertId()
-	//affected, _ := res.RowsAffected()
-	val, _ := otto.ToValue(id)
+	id, err := res.LastInsertId()
+	if err == nil && id > 0 {
+		log.Printf("Insert ID: %d\n", id)
+		val, _ := otto.ToValue(id)
+		return val
+	}
 
+	affected, err := res.RowsAffected()
+	if err == nil {
+		log.Printf("Rows: %d\n", affected)
+		val, _ := otto.ToValue(affected)
+		return val
+	}
+
+	val, _ := otto.ToValue(nil)
 	return val
 }
 

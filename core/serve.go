@@ -17,7 +17,10 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"strings"
 )
+
+var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
 
 func checkHandle(requestTorch *torch.Request) {
 	requestTorch.Writef("Session Key: %s\n\n", *requestTorch.Session.Key)
@@ -96,6 +99,17 @@ func Serve(config *ServerConfig) {
 		Bath:   bath,
 		Model:  model,
 		Config: config,
+	}
+
+	core.SendMail = func(to string, subject string, body string) {
+		log.Printf("SEND MAIL TO %s: %s\n", to, subject)
+		e := &email.Email{
+			Recipient: to,
+			Sender:    core.Config.EmailConfig.From,
+			Subject:   subject,
+			Html:      body,
+		}
+		go core.Email.Sender.Send(e)
 	}
 
 	h := Hooker{
@@ -222,6 +236,32 @@ func Serve(config *ServerConfig) {
 	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
 	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
 	http.HandleFunc("/csv/", parser.Wrap(csvHandler.Handle))
+
+	http.HandleFunc("/script/", func(w http.ResponseWriter, r *http.Request) {
+		// SECURITY?! Make sure NGINX blocks the url?
+
+		real_ip := r.Header.Get("X-Real-IP")
+		if len(real_ip) > 0 {
+			w.Write([]byte("NOT ALLOWED"))
+			return
+		}
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) < 3 {
+			log.Printf("/script/ called with %s\n", parts)
+			return
+		}
+		script := re_unsafe.ReplaceAllString(parts[2], "_")
+
+		log.Printf("RUN SCRIPT %s\n", script)
+
+		_, err := dynamicHandler.Runner.Run(script+".js", map[string]interface{}{"path": parts[2:]})
+		if err != nil {
+			log.Println(err)
+			w.Write([]byte("ERROR"))
+			return
+		}
+		w.Write([]byte("OK"))
+	})
 
 	http.HandleFunc("/reload", parser.Wrap(config.ReloadHandle))
 

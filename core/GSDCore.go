@@ -7,9 +7,10 @@ import (
 )
 
 type GSDCore struct {
-	Bath   *databath.Bath
-	Model  *databath.Model
-	Email  *email.EmailHandler
-	Hooker *Hooker
-	Config *ServerConfig
+	Bath     *databath.Bath
+	Model    *databath.Model
+	Email    *email.EmailHandler
+	Hooker   *Hooker
+	Config   *ServerConfig
+	SendMail func(to string, subject string, body string)
 }

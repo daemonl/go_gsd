@@ -60,10 +60,12 @@ func (vm *ViewManager) Reload() error {
 				output := blackfriday.Markdown([]byte(in), renderer, extensions)
 				return template.HTML(string(output))
 			},
-			"htmlLineBreaks": func(in string) template.HTML {
-				log.Println(in)
-				safe := template.HTMLEscapeString(in)
-				log.Println(safe)
+			"htmlLineBreaks": func(in interface{}) template.HTML {
+				inStr, ok := in.(string)
+				if !ok {
+					return ""
+				}
+				safe := template.HTMLEscapeString(inStr)
 				return template.HTML(strings.Replace(safe, "\n", "<br/>", -1))
 			},
 		},

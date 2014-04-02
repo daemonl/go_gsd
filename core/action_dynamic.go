@@ -20,6 +20,7 @@ func GetDynamicHandlerFromCore(core *GSDCore) *DynamicHandler {
 	runner := &dynamic.DynamicRunner{
 		DataBath:      core.Bath,
 		BaseDirectory: core.Config.ScriptDirectory, // "/home/daemonl/schkit/impl/pov/script/",
+		SendMail:      core.SendMail,
 	}
 	return &DynamicHandler{
 		Core:   core,

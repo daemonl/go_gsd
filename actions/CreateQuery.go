@@ -1,13 +1,12 @@
-package core
+package actions
 
 import (
-	"fmt"
-	"github.com/daemonl/go_gsd/socket"
+	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/go_lib/databath"
 )
 
 type CreateQuery struct {
-	Core *GSDCore
+	Core Core
 }
 
 type createRequest struct {
@@ -26,59 +25,55 @@ func (q *CreateQuery) GetRequestObject() interface{} {
 	return &r
 }
 
-func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interface{}, responseId string) {
+func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
 	createRequest, ok := requestObject.(*createRequest)
 	if !ok {
-		return
+		return nil, ErrF("Request Type Mismatch")
 	}
+
+	session := ac.GetSession()
 
 	qc := databath.GetMinimalQueryConditions(createRequest.Collection, "form")
 
 	context := databath.MapContext{
 		Fields: make(map[string]interface{}),
 	}
-	context.Fields["#me"] = os.Session.User.Id
-	context.Fields["#user"] = os.Session.User.Id
+	context.Fields["#me"] = session.User.Id
+	context.Fields["#user"] = session.User.Id
 
-	query, err := databath.GetQuery(&context, r.Core.Model, qc)
+	model := r.Core.GetModel()
+
+	query, err := databath.GetQuery(&context, model, qc)
 	if err != nil {
-		fmt.Println(err)
-		os.SendError(responseId, err)
-		return
+		return nil, err
 	}
 
-	actionSummary := ActionSummary{
-		User:       os.Session.User,
+	actionSummary := &shared_structs.ActionSummary{
+		UserId:     session.User.Id,
 		Action:     "create",
-		Collection: r.Core.Model.Collections[createRequest.Collection],
+		Collection: createRequest.Collection,
 		Pk:         0,
 		Fields:     createRequest.Values,
 	}
 
-	r.Core.Hooker.DoPreHooks(&actionSummary)
+	r.Core.DoHooksPreAction(actionSummary)
 
 	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
-		fmt.Printf("Error building insert: %s", err)
-		os.SendError(responseId, err)
-		return
+		return nil, err
 	}
 
-	c := r.Core.Bath.GetConnection()
+	c := r.Core.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
-	fmt.Println(sqlString)
+
 	res, err := db.Exec(sqlString, parameters...)
 	if err != nil {
-		fmt.Println(err)
-		os.SendError(responseId, err)
-		return
+		return nil, err
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		fmt.Println(err)
-		os.SendError(responseId, err)
-		return
+		return nil, err
 	}
 	actionSummary.Pk = uint64(id)
 	result := createResult{
@@ -92,9 +87,8 @@ func (r *CreateQuery) HandleRequest(os *socket.OpenSocket, requestObject interfa
 		"id":         id,
 		"object":     createRequest.Values,
 	}
-	//go doHooks(r.Core.Bath, r.Core.Model)
 
-	go r.Core.Hooker.DoPostHooks(&actionSummary)
-	go os.SendObjectToAll("create", createObject)
-	os.SendObject("result", responseId, result)
+	go r.Core.DoHooksPostAction(actionSummary)
+	go ac.Broadcast("create", createObject)
+	return result, nil
 }

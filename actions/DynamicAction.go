@@ -1,20 +1,17 @@
-package core
+package actions
 
-import (
-	"github.com/daemonl/go_gsd/dynamic"
-	"github.com/daemonl/go_gsd/socket"
-	"log"
-)
+import ()
 
 type DynamicHandler struct {
-	Core   *GSDCore
-	Runner *dynamic.DynamicRunner
+	Core Core
+	//Runner *dynamic.DynamicRunner
 }
 type dynamicRequest struct {
 	FunctionName string                 `json:"function"`
 	Parameters   map[string]interface{} `json:"parameters"`
 }
 
+/*
 func GetDynamicHandlerFromCore(core *GSDCore) *DynamicHandler {
 
 	runner := &dynamic.DynamicRunner{
@@ -22,36 +19,34 @@ func GetDynamicHandlerFromCore(core *GSDCore) *DynamicHandler {
 		BaseDirectory: core.Config.ScriptDirectory, // "/home/daemonl/schkit/impl/pov/script/",
 		SendMail:      core.SendMail,
 	}
+
 	return &DynamicHandler{
 		Core:   core,
 		Runner: runner,
 	}
 }
+*/
 
 func (q *DynamicHandler) GetRequestObject() interface{} {
 	r := dynamicRequest{}
 	return &r
 }
 
-func (r *DynamicHandler) HandleRequest(os *socket.OpenSocket, requestObject interface{}, responseId string) {
-	dr := r.Runner
+func (r *DynamicHandler) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
+
 	cqr, ok := requestObject.(*dynamicRequest)
 	if !ok {
-		return
+		return nil, ErrF("Request Type Mismatch")
 	}
 
-	fnConfig, ok := r.Core.Model.DynamicFunctions[cqr.FunctionName]
+	model := r.Core.GetModel()
+
+	//dr := r.Runner
+
+	fnConfig, ok := model.DynamicFunctions[cqr.FunctionName]
 	if !ok {
-		log.Printf("No registered dynamic function named '%s'", cqr.FunctionName)
-		return
+		return nil, ErrF("No registered dynamic function named '%s'", cqr.FunctionName)
 	}
 
-	res, err := dr.Run(fnConfig.Filename, cqr.Parameters)
-	if err != nil {
-		log.Println(err.Error())
-		os.SendError(responseId, err)
-		return
-	}
-
-	os.SendObject("result", responseId, res)
+	return r.Core.RunDynamic(fnConfig.Filename, cqr.Parameters)
 }

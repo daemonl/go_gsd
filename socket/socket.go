@@ -2,13 +2,12 @@ package socket
 
 import (
 	"bufio"
-	"log"
-
 	"code.google.com/p/go.net/websocket"
 	"encoding/json"
-
+	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/torch"
 	"io"
+	"log"
 	"strings"
 	"time"
 )
@@ -44,7 +43,7 @@ func (ssm *StringSocketMessage) PipeMessage(w io.Writer) {
 
 type Handler interface {
 	GetRequestObject() interface{}
-	HandleRequest(os *OpenSocket, requestObject interface{}, responseId string)
+	HandleRequest(ac actions.ActionCore, requestObject interface{}) (interface{}, error)
 }
 
 func GetManager(sessionStore *torch.SessionStore) *Manager {
@@ -63,6 +62,18 @@ func (m *Manager) RegisterHandler(name string, handler Handler) {
 
 func (m *Manager) GetListener() *websocket.Handler {
 	return &m.websocketHandler
+}
+
+func (manager *Manager) Broadcast(functionName string, object interface{}) {
+	bytes, _ := json.Marshal(object)
+	m := StringSocketMessage{FunctionName: functionName, ResponseId: "", Message: string(bytes)}
+	log.Println("BROADCAST " + functionName)
+	log.Println(string(bytes))
+	for i, s := range manager.OpenSockets {
+		log.Printf("Send to %d of %d\n", i+1, len(manager.OpenSockets))
+		go s.SendRaw(&m)
+	}
+	log.Println("END BROADCAST")
 }
 
 // Echo the data received on the WebSocket.
@@ -129,6 +140,7 @@ func (m *Manager) parse(raw string, os *OpenSocket) {
 		return
 	}
 	functionName := parts[0]
+	responseId := parts[1]
 
 	handlerObj, ok := m.handlers[functionName]
 	if !ok {
@@ -144,5 +156,13 @@ func (m *Manager) parse(raw string, os *OpenSocket) {
 		return
 	}
 
-	handlerObj.HandleRequest(os, requestObj, parts[1])
+	resp, err := handlerObj.HandleRequest(os, requestObj)
+	if err != nil {
+		log.Printf("ERROR: %s\n", err.Error())
+		os.SendError(responseId, err)
+		return
+	}
+
+	os.SendObject("response", responseId, resp)
+
 }

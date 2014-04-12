@@ -150,7 +150,11 @@ func (h *FileHandler) Download(requestTorch *torch.Request) {
 		return
 	}
 
-	row, err := query.RunQueryWithSingleResult(h.Bath, sqlString, parameters)
+	c := h.Bath.GetConnection()
+	db := c.GetDB()
+	defer c.Release()
+
+	row, err := query.RunQueryWithSingleResult(db, sqlString, parameters)
 	if err != nil {
 		log.Print(err)
 		requestTorch.DoError(err)

@@ -1,13 +1,10 @@
 package torch
 
 import (
-	"errors"
-	"fmt"
 	"github.com/daemonl/go_lib/databath"
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -15,57 +12,6 @@ type Parser struct {
 	Store          *SessionStore
 	Bath           *databath.Bath
 	PublicPatterns []*regexp.Regexp
-}
-
-type Request struct {
-	writer  http.ResponseWriter
-	raw     *http.Request
-	DbConn  *databath.Connection
-	Session *Session
-	Method  string
-}
-
-func (r *Request) GetWriter() http.ResponseWriter {
-	return r.writer
-}
-func (r *Request) GetRaw() (http.ResponseWriter, *http.Request) {
-	return r.writer, r.raw
-}
-func (r *Request) UrlMatch(dest ...interface{}) error {
-	urlParts := strings.Split(r.raw.URL.Path[1:], "/")
-	if len(urlParts) != len(dest) {
-		fmt.Println(urlParts)
-		return errors.New(fmt.Sprintf("URL had %d parameters, expected %d", len(urlParts), len(dest)))
-	}
-	for i, src := range urlParts {
-		dst := dest[i]
-		switch t := dst.(type) {
-		case *string:
-			*t = src
-		case *uint64:
-			srcInt, err := strconv.ParseUint(src, 10, 64)
-			if err != nil {
-				return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to an unsigned integer"))
-			}
-			*t = srcInt
-
-		default:
-			return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to a %T",
-				i+1, t))
-
-		}
-	}
-	return nil
-}
-func (r *Request) DoError(err error) {
-	log.Println(err)
-	r.Writef("Error: %s", err.Error())
-}
-
-func (r *Request) DoErrorf(format string, parameters ...interface{}) {
-	str := fmt.Sprintf(format, parameters...)
-	log.Println(str)
-	r.Write(str)
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request

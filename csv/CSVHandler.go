@@ -75,7 +75,10 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 		return
 	}
 
-	rows, err := query.RunQueryWithResults(h.Bath, sqlString, parameters)
+	c := h.Bath.GetConnection()
+	db := c.GetDB()
+	defer c.Release()
+	rows, err := query.RunQueryWithResults(db, sqlString, parameters)
 	if err != nil {
 		log.Print(err)
 		requestTorch.DoError(err)

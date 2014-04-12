@@ -2,28 +2,21 @@ package core
 
 import (
 	"fmt"
-	"github.com/daemonl/go_gsd/dynamic"
-	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/go_gsd/shared_structs"
 	"log"
 	"time"
 )
 
 type Hooker struct {
-	Core   *GSDCore
-	Runner *dynamic.DynamicRunner
+	Core *GSDCore
 }
 
-type ActionSummary struct {
-	User       *torch.User
-	Action     string
-	Collection *databath.Collection
-	Pk         uint64
-	Fields     map[string]interface{}
-}
+func (h *Hooker) DoPreHooks(as *shared_structs.ActionSummary) {
 
-func (h *Hooker) DoPreHooks(as *ActionSummary) {
-	for _, hook := range as.Collection.Hooks {
+	model := h.Core.Model
+	collection := model.Collections[as.Collection]
+
+	for _, hook := range collection.Hooks {
 		if hook.When.What != as.Action {
 			continue
 		}
@@ -46,7 +39,7 @@ func (h *Hooker) DoPreHooks(as *ActionSummary) {
 			vString, ok := v.(string)
 			if ok {
 				if vString == "#me" {
-					v = as.User.Id
+					v = as.UserId
 				}
 			}
 			as.Fields[k] = v
@@ -54,12 +47,19 @@ func (h *Hooker) DoPreHooks(as *ActionSummary) {
 
 	}
 }
-func (h *Hooker) DoPostHooks(as *ActionSummary) {
+func (h *Hooker) DoPostHooks(as *shared_structs.ActionSummary) {
 	go h.WriteHistory(as)
 
 	log.Println("PROCESS POST HOOKS")
 
-	for _, hook := range as.Collection.Hooks {
+	model := h.Core.Model
+	collection := model.Collections[as.Collection]
+
+	c := h.Core.Bath.GetConnection()
+	db := c.GetDB()
+	defer c.Release()
+
+	for _, hook := range collection.Hooks {
 		if hook.CustomAction != nil {
 			log.Println("HOOK CUSTOM ACTION: " + hook.Collection)
 			p := make([]interface{}, len(hook.Raw.InFields), len(hook.Raw.InFields))
@@ -77,7 +77,7 @@ func (h *Hooker) DoPostHooks(as *ActionSummary) {
 				}
 				p[i] = val
 			}
-			results, err := hook.CustomAction.Run(h.Core.Bath, p)
+			results, err := hook.CustomAction.Run(db, p)
 			if err != nil {
 				log.Println(err.Error())
 				return
@@ -89,14 +89,14 @@ func (h *Hooker) DoPostHooks(as *ActionSummary) {
 			log.Printf("Hook Script %s\n", scriptName)
 
 			scriptMap := map[string]interface{}{
-				"userId":     as.User.Id,
+				"userId":     as.UserId,
 				"action":     as.Action,
-				"collection": as.Collection.TableName,
+				"collection": as.Collection,
 				"id":         as.Pk,
 				"fields":     as.Fields,
 			}
 
-			dr := h.Runner
+			dr := h.Core.Runner
 
 			fnConfig, ok := h.Core.Model.DynamicFunctions[scriptName]
 			if !ok {
@@ -131,21 +131,24 @@ func (h *Hooker) DoPostHooks(as *ActionSummary) {
 	}
 }
 
-func (h *Hooker) WriteHistory(as *ActionSummary) {
+func (h *Hooker) WriteHistory(as *shared_structs.ActionSummary) {
 	//, userId uint64, action string, collectionName string, entityId uint64) {
-	identity, _ := h.Core.Model.GetIdentityString(h.Core.Bath, as.Collection.TableName, as.Pk)
+
+	c := h.Core.Bath.GetConnection()
+	db := c.GetDB()
+	defer c.Release()
+
+	identity, _ := h.Core.Model.GetIdentityString(db, as.Collection, as.Pk)
 	timestamp := time.Now().Unix()
 
-	log.Println("WRITE HISTORY", as.User.Id, identity, timestamp, as.Action, as.Collection.TableName, as.Pk)
+	log.Println("WRITE HISTORY", as.UserId, identity, timestamp, as.Action, as.Collection, as.Pk)
 
 	sql := fmt.Sprintf(`INSERT INTO history 
 		(user, identity, timestamp, action, entity, entity_id) VALUES 
 		(%d, '%s', %d, '%s', '%s', %d)`,
-		as.User.Id, identity, timestamp, as.Action, as.Collection.TableName, as.Pk)
+		as.UserId, identity, timestamp, as.Action, as.Collection, as.Pk)
 	//log.Println(sql)
-	c := h.Core.Bath.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
+
 	_, err := db.Exec(sql)
 	if err != nil {
 		log.Println(err)

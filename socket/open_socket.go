@@ -69,14 +69,10 @@ func (os *OpenSocket) SendError(responseId string, err error) {
 	m := StringSocketMessage{FunctionName: "error", ResponseId: responseId, Message: string(bytes)}
 	os.Sender <- &m
 }
-func (os *OpenSocket) SendObjectToAll(functionName string, object interface{}) {
-	bytes, _ := json.Marshal(object)
-	m := StringSocketMessage{FunctionName: functionName, ResponseId: "", Message: string(bytes)}
-	log.Println("BROADCAST " + functionName)
-	log.Println(string(bytes))
-	for i, otherSocket := range os.Manager.OpenSockets {
-		log.Printf("Send to %d of %d\n", i+1, len(os.Manager.OpenSockets))
-		go otherSocket.SendRaw(&m)
-	}
-	log.Println("END BROADCAST")
+func (os *OpenSocket) GetSession() *torch.Session {
+	return os.Session
+}
+func (os *OpenSocket) Broadcast(functionName string, object interface{}) {
+	os.Manager.Broadcast(functionName, object)
+
 }

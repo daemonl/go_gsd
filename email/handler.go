@@ -74,15 +74,19 @@ func (h *EmailHandler) Send(requestTorch *torch.Request) {
 	functionName := ""
 	emailName := ""
 	var id uint64
-	recipient := ""
+	recipientRaw := ""
 	notes := ""
 
-	err := requestTorch.UrlMatch(&functionName, &emailName, &id, &recipient, &notes)
+	err := requestTorch.UrlMatch(&functionName, &emailName, &id, &recipientRaw, &notes)
 	if err != nil {
 		requestTorch.DoError(err)
 		return
 	}
-	h.SendMailNow(emailName, id, recipient, notes, requestTorch)
+
+	recipients := strings.Split(recipientRaw, ";")
+	for _, recipient := range recipients {
+		h.SendMailNow(emailName, id, strings.TrimSpace(recipient), notes, requestTorch)
+	}
 
 }
 

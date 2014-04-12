@@ -1,7 +1,10 @@
 package core
 
 import (
+	"encoding/json"
+	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/csv"
+	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/file"
 	"github.com/daemonl/go_gsd/pdf"
@@ -87,7 +90,7 @@ func Serve(config *ServerConfig) {
 		return
 	}
 
-	// IF IT IS TO SYNC, STOP HERE (--sync)
+	// STOP HERE FOR SYNC COMMANDS (--sync)
 	if doSync {
 		conn := bath.GetConnection()
 		db := conn.GetDB()
@@ -101,22 +104,15 @@ func Serve(config *ServerConfig) {
 		Config: config,
 	}
 
-	core.SendMail = func(to string, subject string, body string) {
-		log.Printf("SEND MAIL TO %s: %s\n", to, subject)
-		e := &email.Email{
-			Recipient: to,
-			Sender:    core.Config.EmailConfig.From,
-			Subject:   subject,
-			Html:      body,
-		}
-		go core.Email.Sender.Send(e)
+	core.Runner = &dynamic.DynamicRunner{
+		DataBath:      core.Bath,
+		BaseDirectory: core.Config.ScriptDirectory, // "/home/daemonl/schkit/impl/pov/script/",
+		SendMail:      core.SendMail,
 	}
 
-	h := Hooker{
+	core.Hooker = &Hooker{
 		Core: &core,
 	}
-
-	core.Hooker = &h
 
 	parser := torch.Parser{
 		Store:          torch.InMemorySessionStore(),
@@ -147,41 +143,55 @@ func Serve(config *ServerConfig) {
 		parser.PublicPatterns[i] = reg
 	}
 
+	actionMap := map[string]socket.Handler{
+		"get":     &actions.SelectQuery{Core: &core},
+		"set":     &actions.UpdateQuery{Core: &core},
+		"create":  &actions.CreateQuery{Core: &core},
+		"delete":  &actions.DeleteQuery{Core: &core},
+		"custom":  &actions.CustomQuery{Core: &core},
+		"dynamic": &actions.DynamicHandler{Core: &core},
+	}
+
 	socketManager := socket.GetManager(parser.Store)
 
-	getHandler := SelectQuery{Core: &core}
-	socketManager.RegisterHandler("get", &getHandler)
+	for funcName, handler := range actionMap {
 
-	setHandler := UpdateQuery{Core: &core}
-	socketManager.RegisterHandler("set", &setHandler)
+		func(funcName string, handler socket.Handler) {
+			socketManager.RegisterHandler(funcName, handler)
 
-	createHandler := CreateQuery{Core: &core}
-	socketManager.RegisterHandler("create", &createHandler)
+			rFunc := func(request *torch.Request) {
+				request.BroadcastProxy = socketManager.Broadcast
+				requestObject := handler.GetRequestObject()
+				writer, r := request.GetRaw()
+				dec := json.NewDecoder(r.Body)
+				err := dec.Decode(requestObject)
+				if err != nil {
+					request.DoError(err)
+					return
+				}
+				responseObject, err := handler.HandleRequest(request, requestObject)
+				if err != nil {
+					request.DoError(err)
+					return
+				}
+				enc := json.NewEncoder(writer)
+				enc.Encode(responseObject)
+			}
 
-	deleteHandler := DeleteQuery{Core: &core}
-	socketManager.RegisterHandler("delete", &deleteHandler)
+			http.HandleFunc("/ajax/"+funcName, parser.Wrap(rFunc))
+		}(funcName, handler)
+	}
 
-	choicesForHandler := ChoicesForQuery{Core: &core}
-	socketManager.RegisterHandler("getChoicesFor", &choicesForHandler)
-
-	customHandler := CustomQuery{Core: &core}
-	socketManager.RegisterHandler("custom", &customHandler)
-
-	dynamicHandler := GetDynamicHandlerFromCore(&core)
-	socketManager.RegisterHandler("dynamic", dynamicHandler)
-
-	pingHandler := PingHandler{}
-	socketManager.RegisterHandler("ping", &pingHandler)
+	//pingHandler := PingHandler{Core: &core}
+	//socketManager.RegisterHandler("ping", &pingHandler)
 
 	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
-
-	core.Hooker.Runner = dynamicHandler.Runner
 
 	templateWriter := view.TemplateWriter{
 		Bath:        bath,
 		Model:       model,
 		ViewManager: config.ViewManager,
-		Runner:      dynamicHandler.Runner,
+		Runner:      core.Runner,
 	}
 
 	loginViewHandler := view.ViewHandler{
@@ -225,20 +235,10 @@ func Serve(config *ServerConfig) {
 
 	fallthroughHandler := GetFallthroughHandler(config)
 
-	http.HandleFunc("/check", parser.Wrap(checkHandle))
-	http.HandleFunc("/login", parser.WrapSplit(loginViewHandler.Handle, torch.HandleLogin))
-	http.HandleFunc("/logout", parser.Wrap(torch.HandleLogout))
-	http.HandleFunc("/set_password", parser.WrapSplit(setPasswordViewHandler.Handle, torch.HandleSetPassword))
-	http.HandleFunc("/signup", parser.WrapSplit(signupViewHandler.Handle, signupHandle))
-
-	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
-	http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
-	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
-	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
-	http.HandleFunc("/csv/", parser.Wrap(csvHandler.Handle))
-
-	http.HandleFunc("/script/", func(w http.ResponseWriter, r *http.Request) {
-		// SECURITY?! Make sure NGINX blocks the url?
+	runScript := func(w http.ResponseWriter, r *http.Request) {
+		// This should only run for requests internal to the system, for cronjobs and scripts.
+		// Nginx sets x-real-ip on all forwarded requests.
+		// This needs a security review.
 
 		real_ip := r.Header.Get("X-Real-IP")
 		if len(real_ip) > 0 {
@@ -254,21 +254,35 @@ func Serve(config *ServerConfig) {
 
 		log.Printf("RUN SCRIPT %s\n", script)
 
-		_, err := dynamicHandler.Runner.Run(script+".js", map[string]interface{}{"path": parts[2:]})
+		_, err := core.Runner.Run(script+".js", map[string]interface{}{"path": parts[2:]})
 		if err != nil {
 			log.Println(err)
 			w.Write([]byte("ERROR"))
 			return
 		}
 		w.Write([]byte("OK"))
-	})
+	}
 
+	// SET UP URLS
+
+	http.Handle("/socket", socketManager.GetListener())
+	http.HandleFunc("/check", parser.Wrap(checkHandle))
+	http.HandleFunc("/login", parser.WrapSplit(loginViewHandler.Handle, torch.HandleLogin))
+	http.HandleFunc("/logout", parser.Wrap(torch.HandleLogout))
+	http.HandleFunc("/set_password", parser.WrapSplit(setPasswordViewHandler.Handle, torch.HandleSetPassword))
+	http.HandleFunc("/signup", parser.WrapSplit(signupViewHandler.Handle, signupHandle))
+	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
+	http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
+	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
+	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
+	http.HandleFunc("/csv/", parser.Wrap(csvHandler.Handle))
 	http.HandleFunc("/reload", parser.Wrap(config.ReloadHandle))
-
 	http.HandleFunc("/emailpreview/", parser.Wrap(emailHandler.Preview))
 	http.HandleFunc("/sendmail/", parser.Wrap(emailHandler.Send))
-	http.Handle("/socket", socketManager.GetListener())
+	http.HandleFunc("/script/", runScript)
 	http.HandleFunc("/", parser.Wrap(fallthroughHandler.Handle))
+
+	// SERVE!
 
 	go func() {
 		err = http.ListenAndServe(config.BindAddress, nil)

@@ -71,3 +71,14 @@ func (r *Request) Broadcast(name string, val interface{}) {
 		r.BroadcastProxy(name, val)
 	}
 }
+
+func (r *Request) GetContext() databath.Context {
+	context := &databath.MapContext{
+		IsApplication:   false,
+		UserAccessLevel: r.Session.User.Access,
+		Fields:          make(map[string]interface{}),
+	}
+	context.Fields["#me"] = r.Session.User.Id
+	context.Fields["#user"] = r.Session.User.Id
+	return context
+}

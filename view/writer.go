@@ -33,7 +33,7 @@ func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryCondition
 		return nil, err
 	}
 
-	query, err := databath.GetQuery(context, h.Model, queryConditions)
+	query, err := databath.GetQuery(context, h.Model, queryConditions, false)
 	if err != nil {
 		return nil, err
 	}

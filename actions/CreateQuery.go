@@ -35,15 +35,9 @@ func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 
 	qc := databath.GetMinimalQueryConditions(createRequest.Collection, "form")
 
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-	context.Fields["#me"] = session.User.Id
-	context.Fields["#user"] = session.User.Id
-
 	model := r.Core.GetModel()
 
-	query, err := databath.GetQuery(&context, model, qc)
+	query, err := databath.GetQuery(ac.GetContext(), model, qc, true)
 	if err != nil {
 		return nil, err
 	}

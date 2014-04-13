@@ -25,17 +25,11 @@ func (r *DeleteQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		return nil, ErrF("Request Type Mismatch")
 	}
 
-	session := ac.GetSession()
 	model := r.Core.GetModel()
 
 	qc := databath.GetMinimalQueryConditions(deleteRequest.Collection, "form")
 
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-	context.Fields["me"] = session.User.Id
-
-	query, err := databath.GetQuery(&context, model, qc)
+	query, err := databath.GetQuery(ac.GetContext(), model, qc, true)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 type ActionCore interface {
 	GetSession() *torch.Session
 	Broadcast(functionName string, object interface{})
+	GetContext() databath.Context
 }
 
 type Handler interface {

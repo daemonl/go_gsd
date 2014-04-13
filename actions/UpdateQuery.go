@@ -32,12 +32,7 @@ func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 	session := ac.GetSession()
 	model := r.Core.GetModel()
 
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-	context.Fields["me"] = session.User.Id
-
-	query, err := databath.GetQuery(&context, model, queryConditions)
+	query, err := databath.GetQuery(ac.GetContext(), model, queryConditions, true)
 	if err != nil {
 		return nil, err
 	}

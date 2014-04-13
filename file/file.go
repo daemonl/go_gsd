@@ -134,10 +134,8 @@ func (h *FileHandler) Download(requestTorch *torch.Request) {
 		Pk:         &fileId,
 	}
 	qc, _ := rqueryConditions.TranslateToQuery()
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-	query, err := databath.GetQuery(&context, h.Model, qc)
+
+	query, err := databath.GetQuery(requestTorch.GetContext(), h.Model, qc, false)
 	if err != nil {
 		log.Print(err)
 		requestTorch.DoError(err)
@@ -190,10 +188,11 @@ func (h *FileHandler) Download(requestTorch *torch.Request) {
 
 func (h *FileHandler) writeDatabaseEntry(dbEntry map[string]interface{}, fileCollection string) error {
 	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
+		IsApplication: true,
+		Fields:        make(map[string]interface{}),
 	}
 	qc := databath.GetMinimalQueryConditions(fileCollection, "form")
-	q, err := databath.GetQuery(&context, h.Model, qc)
+	q, err := databath.GetQuery(&context, h.Model, qc, true)
 	if err != nil {
 		return err
 	}

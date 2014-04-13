@@ -150,6 +150,7 @@ func Serve(config *ServerConfig) {
 		"delete":  &actions.DeleteQuery{Core: &core},
 		"custom":  &actions.CustomQuery{Core: &core},
 		"dynamic": &actions.DynamicHandler{Core: &core},
+		"ping":    &actions.PingAction{Core: &core},
 	}
 
 	socketManager := socket.GetManager(parser.Store)

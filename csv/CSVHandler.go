@@ -59,10 +59,7 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 		return
 	}
 
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-	query, err := databath.GetQuery(&context, h.Model, qc)
+	query, err := databath.GetQuery(requestTorch.GetContext(), h.Model, qc, false)
 	if err != nil {
 		log.Print(err)
 		requestTorch.DoError(err)

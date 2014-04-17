@@ -25,7 +25,8 @@ type Session struct {
 }
 
 type SessionStore struct {
-	sessions map[string]*Session
+	sessions  map[string]*Session
+	Broadcast func(name string, val interface{})
 }
 
 type FlashMessage struct {
@@ -40,9 +41,11 @@ func (s *Session) AddFlash(severity, format string, parameters ...interface{}) {
 	}
 	s.Flash = append(s.Flash, fm)
 }
+
 func (s *Session) ResetFlash() {
 	s.Flash = make([]FlashMessage, 0, 0)
 }
+
 func InMemorySessionStore() *SessionStore {
 	ss := SessionStore{
 		sessions: make(map[string]*Session),

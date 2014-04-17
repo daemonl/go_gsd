@@ -13,7 +13,9 @@ type OpenSocket struct {
 	ws      *websocket.Conn
 	Sender  chan SocketMessage
 	Closer  chan bool
+	closed  bool
 	Manager *Manager
+	UID     uint
 }
 
 type socketError struct {
@@ -21,7 +23,15 @@ type socketError struct {
 }
 
 func (os *OpenSocket) Close() {
+
+	if os.closed {
+		log.Printf("S:%d RE CLOSE\n", os.UID)
+		return
+	}
+	log.Printf("S:%d CLOSE\n", os.UID)
+	os.closed = true
 	os.Closer <- true
+	os.ws.Close()
 	var indexOfThisSocket *int
 	for i, s := range os.Manager.OpenSockets {
 		if s == os {
@@ -45,7 +55,6 @@ func (os *OpenSocket) Wait() {
 			msg.PipeMessage(os.ws)
 			os.ws.Write([]byte("END|" + msg.GetFunctionName() + "|" + msg.GetResponseId()))
 		case _ = <-os.Closer:
-			log.Println("Chan Socket Closed")
 			return
 		}
 	}
@@ -57,6 +66,7 @@ func (os *OpenSocket) SendObject(functionName string, responseId string, object 
 		return
 	}
 	m := StringSocketMessage{FunctionName: functionName, ResponseId: responseId, Message: string(bytes)}
+	log.Printf("S:%d SEND %s %s\n", os.UID, functionName, responseId)
 	os.Sender <- &m
 }
 func (os *OpenSocket) SendRaw(sm SocketMessage) {
@@ -68,6 +78,7 @@ func (os *OpenSocket) SendError(responseId string, err error) {
 	}
 	bytes, _ := json.Marshal(errObject)
 	m := StringSocketMessage{FunctionName: "error", ResponseId: responseId, Message: string(bytes)}
+	log.Printf("S:%d SEND ERROR %s\n", os.UID, responseId)
 	os.Sender <- &m
 }
 func (os *OpenSocket) GetSession() *torch.Session {
@@ -75,7 +86,6 @@ func (os *OpenSocket) GetSession() *torch.Session {
 }
 func (os *OpenSocket) Broadcast(functionName string, object interface{}) {
 	os.Manager.Broadcast(functionName, object)
-
 }
 
 func (os *OpenSocket) GetContext() databath.Context {

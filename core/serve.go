@@ -161,7 +161,7 @@ func Serve(config *ServerConfig) {
 			socketManager.RegisterHandler(funcName, handler)
 
 			rFunc := func(request *torch.Request) {
-				request.BroadcastProxy = socketManager.Broadcast
+
 				requestObject := handler.GetRequestObject()
 				writer, r := request.GetRaw()
 				dec := json.NewDecoder(r.Body)
@@ -182,6 +182,8 @@ func Serve(config *ServerConfig) {
 			http.HandleFunc("/ajax/"+funcName, parser.Wrap(rFunc))
 		}(funcName, handler)
 	}
+
+	parser.Store.Broadcast = socketManager.Broadcast
 
 	//pingHandler := PingHandler{Core: &core}
 	//socketManager.RegisterHandler("ping", &pingHandler)

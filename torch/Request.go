@@ -11,12 +11,11 @@ import (
 )
 
 type Request struct {
-	writer         http.ResponseWriter
-	raw            *http.Request
-	DbConn         *databath.Connection
-	Session        *Session
-	Method         string
-	BroadcastProxy func(string, interface{})
+	writer  http.ResponseWriter
+	raw     *http.Request
+	DbConn  *databath.Connection
+	Session *Session
+	Method  string
 }
 
 func (r *Request) GetWriter() http.ResponseWriter {
@@ -67,9 +66,8 @@ func (r *Request) GetSession() *Session {
 }
 
 func (r *Request) Broadcast(name string, val interface{}) {
-	if r.Broadcast != nil {
-		r.BroadcastProxy(name, val)
-	}
+	r.Session.Store.Broadcast(name, val)
+
 }
 
 func (r *Request) GetContext() databath.Context {

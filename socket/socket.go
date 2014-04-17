@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var nextUID uint = 0
+
 type Manager struct {
 	handlers         map[string]Handler
 	websocketHandler websocket.Handler
@@ -96,13 +98,21 @@ func (m *Manager) listener(ws *websocket.Conn) {
 		return
 	}
 
+	if session.User == nil {
+		log.Println("Socket opened for session with no user")
+		ws.Close()
+		return
+	}
+
 	os := OpenSocket{
 		Session: session,
 		ws:      ws,
 		Sender:  make(chan SocketMessage, 5),
 		Closer:  make(chan bool),
 		Manager: m,
+		UID:     nextUID,
 	}
+	nextUID++
 	m.OpenSockets = append(m.OpenSockets, &os)
 
 	go os.Wait()
@@ -117,15 +127,16 @@ func (m *Manager) listener(ws *websocket.Conn) {
 	}
 	os.Sender <- &whoAmI
 
+	log.Printf("S:%d OPEN for user %d: %s [%d]\n", os.UID, session.User.Id, session.User.Username, session.User.Access)
+
 	r := bufio.NewReader(ws)
 	for {
 		line, err := r.ReadString('\n')
 		if err != nil {
-			log.Println(err)
-			os.Close()
+			log.Printf("S:%d Error reading line: %s\n", os.UID, err.Error())
 			return
 		}
-		log.Printf("LINE IN: %s", line)
+		log.Printf("S:%d IN: %s", os.UID, line)
 		os.Session.LastRequest = time.Now()
 		m.parse(line, &os)
 	}

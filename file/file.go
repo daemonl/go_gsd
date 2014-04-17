@@ -103,11 +103,19 @@ func (h *FileHandler) Upload(requestTorch *torch.Request) {
 		"filename":    origName,
 	}
 
-	err = h.writeDatabaseEntry(dbEntry, fileCollection)
+	err = h.writeDatabaseEntry(requestTorch, dbEntry, fileCollection)
 	if err != nil {
 		log.Println(err)
 		requestTorch.DoError(err)
+		return
 	}
+
+	requestTorch.Write(`
+		<script type='text/javascript'>
+		window.top.file_done()
+		</script>
+		Uploaded Successfully.
+	`)
 
 }
 func (h *FileHandler) Download(requestTorch *torch.Request) {
@@ -186,13 +194,11 @@ func (h *FileHandler) Download(requestTorch *torch.Request) {
 	}
 }
 
-func (h *FileHandler) writeDatabaseEntry(dbEntry map[string]interface{}, fileCollection string) error {
-	context := databath.MapContext{
-		IsApplication: true,
-		Fields:        make(map[string]interface{}),
-	}
+func (h *FileHandler) writeDatabaseEntry(requestTorch *torch.Request, dbEntry map[string]interface{}, fileCollection string) error {
+
 	qc := databath.GetMinimalQueryConditions(fileCollection, "form")
-	q, err := databath.GetQuery(&context, h.Model, qc, true)
+
+	q, err := databath.GetQuery(requestTorch.GetContext(), h.Model, qc, true)
 	if err != nil {
 		return err
 	}
@@ -204,10 +210,32 @@ func (h *FileHandler) writeDatabaseEntry(dbEntry map[string]interface{}, fileCol
 	c := h.Bath.GetConnection()
 	db := c.GetDB()
 	defer c.Release()
+
 	fmt.Println(sqlString)
-	_, err = db.Exec(sqlString, parameters...)
+
+	res, err := db.Exec(sqlString, parameters...)
+
 	if err != nil {
 		return err
 	}
+
+	pk, _ := res.LastInsertId()
+	/*
+		actionSummary := &shared_structs.ActionSummary{
+			UserId:     requestTorch.Session.User.Id,
+			Action:     "create",
+			Collection: fileCollection,
+			Pk:         uint64(pk),
+			Fields:     dbEntry,
+		}
+	*/
+	createObject := map[string]interface{}{
+		"collection": fileCollection,
+		"id":         uint64(pk),
+		"object":     dbEntry,
+	}
+
+	requestTorch.Broadcast("create", createObject)
+
 	return nil
 }

@@ -76,7 +76,7 @@ func (r *Request) GetContext() databath.Context {
 		UserAccessLevel: r.Session.User.Access,
 		Fields:          make(map[string]interface{}),
 	}
-	context.Fields["#me"] = r.Session.User.Id
-	context.Fields["#user"] = r.Session.User.Id
+	context.Fields["me"] = r.Session.User.Id
+	context.Fields["user"] = r.Session.User.Id
 	return context
 }

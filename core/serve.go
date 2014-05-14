@@ -14,6 +14,7 @@ import (
 	"github.com/daemonl/go_lib/databath"
 	"github.com/daemonl/go_lib/databath/sync"
 	"github.com/daemonl/go_lib/google_auth"
+
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"net/http"
@@ -78,7 +79,7 @@ func (config *ServerConfig) ReloadHandle(requestTorch *torch.Request) {
 	requestTorch.Writef("Loaded Views")
 }
 
-func Serve(config *ServerConfig) {
+func GetCore(config *ServerConfig) (core *GSDCore, err error) {
 
 	bath := databath.RunABath(config.Database.Driver, config.Database.DataSourceName, config.Database.PoolSize)
 
@@ -86,19 +87,10 @@ func Serve(config *ServerConfig) {
 	if err != nil {
 		log.Println("COULD NOT READ MODEL FILE")
 		log.Println(err.Error())
-		log.Println("EXIT")
-		return
+		return nil, err
 	}
 
-	// STOP HERE FOR SYNC COMMANDS (--sync)
-	if doSync {
-		conn := bath.GetConnection()
-		db := conn.GetDB()
-		sync.SyncDb(db, model, forceSync)
-		return
-	}
-
-	core := GSDCore{
+	core = &GSDCore{
 		Bath:   bath,
 		Model:  model,
 		Config: config,
@@ -111,12 +103,37 @@ func Serve(config *ServerConfig) {
 	}
 
 	core.Hooker = &Hooker{
-		Core: &core,
+		Core: core,
 	}
+
+	return
+
+}
+
+func Sync(config *ServerConfig, force bool) error {
+	core, err := GetCore(config)
+	if err != nil {
+		return err
+	}
+
+	conn := core.Bath.GetConnection()
+	db := conn.GetDB()
+	sync.SyncDb(db, core.GetModel(), force)
+	return nil
+
+}
+func Serve(config *ServerConfig) error {
+
+	core, err := GetCore(config)
+	if err != nil {
+		return err
+	}
+
+	model := core.GetModel()
 
 	parser := torch.Parser{
 		Store:          torch.InMemorySessionStore(),
-		Bath:           bath,
+		Bath:           core.Bath,
 		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
 	}
 
@@ -127,7 +144,7 @@ func Serve(config *ServerConfig) {
 		if err != nil {
 			log.Printf("Could not load sessions: %s\n", err.Error())
 		} else {
-			conn := bath.GetConnection()
+			conn := core.Bath.GetConnection()
 			db := conn.GetDB()
 			parser.Store.LoadSessions(sessFile, func(id uint64) (*torch.User, error) {
 				return torch.LoadUserById(db, id)
@@ -144,13 +161,13 @@ func Serve(config *ServerConfig) {
 	}
 
 	actionMap := map[string]socket.Handler{
-		"get":     &actions.SelectQuery{Core: &core},
-		"set":     &actions.UpdateQuery{Core: &core},
-		"create":  &actions.CreateQuery{Core: &core},
-		"delete":  &actions.DeleteQuery{Core: &core},
-		"custom":  &actions.CustomQuery{Core: &core},
-		"dynamic": &actions.DynamicHandler{Core: &core},
-		"ping":    &actions.PingAction{Core: &core},
+		"get":     &actions.SelectQuery{Core: core},
+		"set":     &actions.UpdateQuery{Core: core},
+		"create":  &actions.CreateQuery{Core: core},
+		"delete":  &actions.DeleteQuery{Core: core},
+		"custom":  &actions.CustomQuery{Core: core},
+		"dynamic": &actions.DynamicHandler{Core: core},
+		"ping":    &actions.PingAction{Core: core},
 	}
 
 	socketManager := socket.GetManager(parser.Store)
@@ -185,13 +202,10 @@ func Serve(config *ServerConfig) {
 
 	parser.Store.Broadcast = socketManager.Broadcast
 
-	//pingHandler := PingHandler{Core: &core}
-	//socketManager.RegisterHandler("ping", &pingHandler)
-
 	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
 
 	templateWriter := view.TemplateWriter{
-		Bath:        bath,
+		Bath:        core.Bath,
 		Model:       model,
 		ViewManager: config.ViewManager,
 		Runner:      core.Runner,
@@ -225,8 +239,8 @@ func Serve(config *ServerConfig) {
 	if err != nil {
 		log.Panic(err)
 	}
-	fileHandler := file.GetFileHandler(config.UploadDirectory, parser.Bath, model)
-	csvHandler := csv.GetCsvHandler(parser.Bath, model)
+	fileHandler := file.GetFileHandler(config.UploadDirectory, core.Bath, model)
+	csvHandler := csv.GetCsvHandler(core.Bath, model)
 
 	if config.OAuthConfig != nil {
 		oauthHandler := google_auth.OAuthHandler{
@@ -321,4 +335,6 @@ func Serve(config *ServerConfig) {
 	}
 
 	log.Println("= SHUTDOWN COMPLETE ")
+
+	return nil
 }

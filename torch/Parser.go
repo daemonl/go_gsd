@@ -4,6 +4,7 @@ import (
 	"github.com/daemonl/go_lib/databath"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"regexp"
 	"strings"
 )
@@ -17,8 +18,10 @@ type Parser struct {
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
 func (parser *Parser) WrapReturn(handler func(*Request)) func(w http.ResponseWriter, r *http.Request) *Request {
 	return func(w http.ResponseWriter, r *http.Request) *Request {
-		//log.Printf("Begin Request")
-		//defer log.Printf("End Request")
+		log.Printf("Begin Request %s\n", r.RequestURI)
+		d, _ := httputil.DumpRequest(r, false)
+		log.Println(string(d))
+		defer log.Printf("End Request\n")
 
 		requestTorch, err := parser.ParseRequest(w, r)
 		if err != nil {

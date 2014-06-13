@@ -109,6 +109,7 @@ func (h *Hooker) DoPostHooks(as *shared_structs.ActionSummary) {
 				log.Println(err.Error())
 				return
 			}
+			log.Println("Hook script complete")
 
 		}
 		if hook.Email != nil {

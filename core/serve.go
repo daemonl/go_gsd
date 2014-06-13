@@ -106,7 +106,7 @@ func GetCore(config *ServerConfig) (core *GSDCore, err error) {
 		Core: core,
 	}
 
-	return
+	return core, err
 
 }
 

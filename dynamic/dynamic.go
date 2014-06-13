@@ -27,26 +27,33 @@ type RunContext struct {
 
 func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}) (map[string]interface{}, error) {
 
+	log.Println("OTTO FUNC START")
 	file, err := os.Open(dr.BaseDirectory + filename)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	script, err := ioutil.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
+	log.Println("OTTO FUNC GET CONNECTION")
 
 	connection := dr.DataBath.GetConnection()
 	defer connection.Release()
 
+	db := connection.GetDB()
+
 	rc := RunContext{
 		runner:   dr,
 		otto:     otto.New(),
-		db:       connection.GetDB(),
+		db:       db,
 		Response: make(map[string]interface{}),
 		EndChan:  make(chan bool),
 	}
+
+	log.Println("OTTO SETUP COMPLETE")
 
 	rc.otto.Interrupt = make(chan func())
 
@@ -242,12 +249,12 @@ func (rc *RunContext) SqlQuery(call otto.FunctionCall) otto.Value {
 	if err != nil {
 		return rc.Err(err.Error())
 	}
+	defer res.Close()
 
 	cols, err := res.Columns()
 	if err != nil {
 		return rc.Err(err.Error())
 	}
-	defer res.Close()
 
 	for res.Next() {
 		rowInterfaces := make([]*string, len(cols), len(cols))

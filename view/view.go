@@ -38,7 +38,7 @@ func (vm *ViewManager) Reload() error {
 	htmlFlags |= blackfriday.HTML_USE_SMARTYPANTS
 	htmlFlags |= blackfriday.HTML_SMARTYPANTS_FRACTIONS
 	htmlFlags |= blackfriday.HTML_SMARTYPANTS_LATEX_DASHES
-	htmlFlags |= blackfriday.HTML_SKIP_SCRIPT
+	//htmlFlags |= blackfriday.HTML_SKIP_SCRIPT
 	renderer := blackfriday.HtmlRenderer(htmlFlags, "", "")
 
 	// set up the parser

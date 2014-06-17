@@ -1,7 +1,7 @@
 package torch
 
 import (
-	"github.com/daemonl/go_lib/databath"
+	"database/sql"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -11,7 +11,8 @@ import (
 
 type Parser struct {
 	Store          *SessionStore
-	Bath           *databath.Bath
+	DB             *sql.DB
+	GetDatabase    func(session *Session) (*sql.DB, error)
 	PublicPatterns []*regexp.Regexp
 }
 
@@ -90,9 +91,7 @@ func (parser *Parser) ParseRequest(w http.ResponseWriter, r *http.Request) (*Req
 		writer: w,
 		raw:    r,
 		Method: r.Method,
-		DbConn: parser.Bath.GetConnection(),
 	}
-	defer request.DbConn.Release()
 
 	sessCookie, err := r.Cookie("gsd_session")
 	if err != nil {
@@ -106,5 +105,10 @@ func (parser *Parser) ParseRequest(w http.ResponseWriter, r *http.Request) (*Req
 		}
 	}
 
+	db, err := parser.GetDatabase(request.Session)
+	if err != nil {
+		return nil, err
+	}
+	request.db = db
 	return &request, nil
 }

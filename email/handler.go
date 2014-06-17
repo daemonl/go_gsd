@@ -14,7 +14,6 @@ type EmailHandler struct {
 	SmtpConfig     *SmtpConfig
 	Sender         *Sender
 	HandlerConfig  *EmailHandlerConfig
-	Bath           *databath.Bath
 	Model          *databath.Model
 	TemplateWriter *view.TemplateWriter
 }

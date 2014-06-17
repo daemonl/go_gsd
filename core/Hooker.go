@@ -1,6 +1,7 @@
 package core
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/daemonl/go_gsd/shared_structs"
 	"log"
@@ -11,7 +12,7 @@ type Hooker struct {
 	Core *GSDCore
 }
 
-func (h *Hooker) DoPreHooks(as *shared_structs.ActionSummary) {
+func (h *Hooker) DoPreHooks(db *sql.DB, as *shared_structs.ActionSummary) {
 
 	model := h.Core.Model
 	collection := model.Collections[as.Collection]
@@ -47,17 +48,13 @@ func (h *Hooker) DoPreHooks(as *shared_structs.ActionSummary) {
 
 	}
 }
-func (h *Hooker) DoPostHooks(as *shared_structs.ActionSummary) {
-	go h.WriteHistory(as)
+func (h *Hooker) DoPostHooks(db *sql.DB, as *shared_structs.ActionSummary) {
+	go h.WriteHistory(db, as)
 
 	log.Println("PROCESS POST HOOKS")
 
 	model := h.Core.Model
 	collection := model.Collections[as.Collection]
-
-	c := h.Core.Bath.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
 
 	for _, hook := range collection.Hooks {
 		if hook.CustomAction != nil {
@@ -104,7 +101,7 @@ func (h *Hooker) DoPostHooks(as *shared_structs.ActionSummary) {
 				return
 			}
 
-			_, err := dr.Run(fnConfig.Filename, scriptMap)
+			_, err := dr.Run(fnConfig.Filename, scriptMap, db)
 			if err != nil {
 				log.Println(err.Error())
 				return
@@ -132,12 +129,8 @@ func (h *Hooker) DoPostHooks(as *shared_structs.ActionSummary) {
 	}
 }
 
-func (h *Hooker) WriteHistory(as *shared_structs.ActionSummary) {
+func (h *Hooker) WriteHistory(db *sql.DB, as *shared_structs.ActionSummary) {
 	//, userId uint64, action string, collectionName string, entityId uint64) {
-
-	c := h.Core.Bath.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
 
 	identity, _ := h.Core.Model.GetIdentityString(db, as.Collection, as.Pk)
 	timestamp := time.Now().Unix()

@@ -5,6 +5,11 @@ import (
 )
 
 func HandleSetPassword(r *Request) {
+	doErr := func(err error) {
+		log.Println(err)
+		r.Session.AddFlash("error", "Something went wrong...")
+		r.Redirect("/set_password")
+	}
 	currentPassword := r.PostValueString("current_password")
 	newPassword1 := r.PostValueString("new_password_1")
 	newPassword2 := r.PostValueString("new_password_2")
@@ -26,9 +31,7 @@ func HandleSetPassword(r *Request) {
 		//Check Current Password
 		matches, err := r.Session.User.CheckPassword(currentPassword)
 		if err != nil {
-			log.Println(err)
-			r.Session.AddFlash("error", "Something went wrong...")
-			r.Redirect("/set_password")
+			doErr(err)
 			return
 		}
 		if !matches {
@@ -48,12 +51,14 @@ func HandleSetPassword(r *Request) {
 
 	hashed := HashPassword(newPassword1)
 
-	db := r.DbConn.GetDB()
-	_, err := db.Exec(`UPDATE staff SET password = ?, set_on_next_login = 0 WHERE id = ?`, hashed, r.Session.User.Id)
+	db, err := r.DB()
 	if err != nil {
-		log.Println(err)
-		r.Session.AddFlash("error", "Something went wrong...")
-		r.Redirect("/set_password")
+		doErr(err)
+		return
+	}
+	_, err = db.Exec(`UPDATE staff SET password = ?, set_on_next_login = 0 WHERE id = ?`, hashed, r.Session.User.Id)
+	if err != nil {
+		doErr(err)
 		return
 	}
 	r.Redirect("/app.html")

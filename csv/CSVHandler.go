@@ -14,13 +14,11 @@ import (
 )
 
 type CSVHandler struct {
-	Bath  *databath.Bath
 	Model *databath.Model
 }
 
-func GetCsvHandler(Bath *databath.Bath, Model *databath.Model) *CSVHandler {
+func GetCsvHandler( Model *databath.Model) *CSVHandler {
 	fh := CSVHandler{
-		Bath:  Bath,
 		Model: Model,
 	}
 	return &fh
@@ -72,9 +70,12 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 		return
 	}
 
-	c := h.Bath.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
+	db, err := requestTorch.DB()
+	if err != nil {
+		requestTorch.DoError(err)
+		return
+	}
+
 	rows, err := query.RunQueryWithResults(db, sqlString, parameters)
 	if err != nil {
 		log.Print(err)

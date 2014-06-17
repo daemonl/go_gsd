@@ -14,14 +14,12 @@ import (
 
 type FileHandler struct {
 	Location string
-	Bath     *databath.Bath
 	Model    *databath.Model
 }
 
-func GetFileHandler(location string, Bath *databath.Bath, Model *databath.Model) *FileHandler {
+func GetFileHandler(location string, Model *databath.Model) *FileHandler {
 	fh := FileHandler{
 		Location: location,
-		Bath:     Bath,
 		Model:    Model,
 	}
 	return &fh
@@ -156,9 +154,12 @@ func (h *FileHandler) Download(requestTorch *torch.Request) {
 		return
 	}
 
-	c := h.Bath.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
+	db, err := requestTorch.DB()
+	if err != nil{
+		requestTorch.DoError(err)
+		return
+	}
+
 
 	row, err := query.RunQueryWithSingleResult(db, sqlString, parameters)
 	if err != nil {
@@ -207,9 +208,10 @@ func (h *FileHandler) writeDatabaseEntry(requestTorch *torch.Request, dbEntry ma
 		return err
 	}
 
-	c := h.Bath.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
+	db, err := requestTorch.DB()
+	if err != nil {
+		return err
+	}
 
 	fmt.Println(sqlString)
 

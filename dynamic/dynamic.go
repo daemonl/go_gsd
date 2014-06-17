@@ -2,7 +2,6 @@ package dynamic
 
 import (
 	"database/sql"
-	"github.com/daemonl/go_lib/databath"
 	"github.com/robertkrimen/otto"
 	"io/ioutil"
 	"log"
@@ -12,7 +11,6 @@ import (
 
 type DynamicRunner struct {
 	BaseDirectory string
-	DataBath      *databath.Bath
 	SendMail      func(to string, subject string, body string)
 }
 
@@ -25,7 +23,7 @@ type RunContext struct {
 	EndChan      chan bool
 }
 
-func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}) (map[string]interface{}, error) {
+func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error) {
 
 	log.Println("OTTO FUNC START")
 	file, err := os.Open(dr.BaseDirectory + filename)
@@ -38,12 +36,6 @@ func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{})
 	if err != nil {
 		return nil, err
 	}
-	log.Println("OTTO FUNC GET CONNECTION")
-
-	connection := dr.DataBath.GetConnection()
-	defer connection.Release()
-
-	db := connection.GetDB()
 
 	rc := RunContext{
 		runner:   dr,

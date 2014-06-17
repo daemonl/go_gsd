@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"log"
 	"strings"
 )

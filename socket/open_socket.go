@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"log"
 )
 

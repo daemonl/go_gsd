@@ -2,7 +2,7 @@ package actions
 
 import (
 	"github.com/daemonl/go_gsd/shared_structs"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 )
 
 type CreateQuery struct {

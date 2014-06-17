@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"io"
 )
 

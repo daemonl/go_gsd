@@ -6,7 +6,7 @@ import (
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"log"
 )
 

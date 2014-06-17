@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 )
 
 type ActionCore interface {

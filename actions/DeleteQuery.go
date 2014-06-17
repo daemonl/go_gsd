@@ -1,7 +1,7 @@
 package actions
 
 import (
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"strings"
 )
 

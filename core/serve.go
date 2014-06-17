@@ -11,8 +11,8 @@ import (
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
-	"github.com/daemonl/go_lib/databath"
-	"github.com/daemonl/go_lib/databath/sync"
+	"github.com/daemonl/databath"
+	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_lib/google_auth"
 
 	_ "github.com/go-sql-driver/mysql"

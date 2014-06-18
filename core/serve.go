@@ -2,6 +2,19 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"os/signal"
+	"regexp"
+	"strings"
+
+	"github.com/daemonl/databath"
+	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/csv"
 	"github.com/daemonl/go_gsd/dynamic"
@@ -11,17 +24,7 @@ import (
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
-	"github.com/daemonl/databath"
-	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_lib/google_auth"
-
-	_ "github.com/go-sql-driver/mysql"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"regexp"
-	"strings"
 )
 
 var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
@@ -55,6 +58,7 @@ type ServerConfig struct {
 	UploadDirectory     string                `json:"uploadDirectory"`
 	TemplateIncludeRoot string                `json:"templateIncludeRoot"`
 	ScriptDirectory     string                `json:"scriptDirectory"`
+	DevMode             bool
 
 	EmailConfig     *email.EmailHandlerConfig
 	EmailFile       *string           `json:"emailFile"`
@@ -83,9 +87,7 @@ func GetCore(config *ServerConfig) (core *GSDCore, err error) {
 
 	model, err := databath.ReadModelFromFile(config.ModelFile)
 	if err != nil {
-		log.Println("COULD NOT READ MODEL FILE")
-		log.Println(err.Error())
-		return nil, err
+		return nil, fmt.Errorf("Error reading model file: %s", err.Error())
 	}
 
 	core = &GSDCore{
@@ -302,6 +304,14 @@ func Serve(config *ServerConfig) error {
 	http.HandleFunc("/emailpreview/", parser.Wrap(emailHandler.Preview))
 	http.HandleFunc("/sendmail/", parser.Wrap(emailHandler.Send))
 	http.HandleFunc("/script/", runScript)
+
+	if config.DevMode {
+		log.Println("---DEV MODE---")
+		http.Handle("/app.html", &rawFileHandler{config: config, filename: "app_dev.html"})
+		http.Handle("/main.css", &lessHandler{config: config, filename: "less/main.less"})
+		http.Handle("/pdf.css", &lessHandler{config: config, filename: "less/pdf.less"})
+	}
+
 	http.HandleFunc("/", parser.Wrap(fallthroughHandler.Handle))
 
 	// SERVE!
@@ -342,4 +352,34 @@ func Serve(config *ServerConfig) error {
 	log.Println("= SHUTDOWN COMPLETE ")
 
 	return nil
+}
+
+type rawFileHandler struct {
+	filename string
+	config   *ServerConfig
+}
+
+func (h *rawFileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	file, err := os.Open(h.config.WebRoot + "/" + h.filename)
+	if err != nil {
+		fmt.Fprintln(w, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+	io.Copy(w, file)
+}
+
+type lessHandler struct {
+	filename string
+	config   *ServerConfig
+}
+
+func (h *lessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "text/css")
+	c := exec.Command("lessc", h.config.WebRoot+"/"+h.filename)
+	c.Stdout = w
+	c.Stderr = os.Stderr
+	c.Run()
 }

@@ -14,6 +14,7 @@ import (
 var configFilename string
 var doSync bool
 var forceSync bool
+var devMode bool
 
 func init() {
 	wd, err := os.Getwd()
@@ -23,10 +24,10 @@ func init() {
 	flag.StringVar(&configFilename, "config", wd+"/config.json", "Use Thusly")
 	flag.BoolVar(&doSync, "sync", false, "Kick off a db sync instead of serving, Dumps the SQL to stdout unless --force is set")
 	flag.BoolVar(&forceSync, "force", false, "Run SQL statements live")
+	flag.BoolVar(&devMode, "dev", false, "Use app_dev.html and compile less live")
 }
 
 func fileNameToObject(filename string, object interface{}) error {
-	log.Println("LOAD OBJECT " + filename)
 	jsonFile, err := os.Open(filename)
 	defer jsonFile.Close()
 	if err != nil {
@@ -45,7 +46,7 @@ func fileNameToObject(filename string, object interface{}) error {
 
 func parseCLI() *core.ServerConfig {
 	flag.Parse()
-	log.Println(configFilename)
+	log.Printf("Load config from %s\n", configFilename)
 
 	var config core.ServerConfig
 	err := fileNameToObject(configFilename, &config)
@@ -53,18 +54,21 @@ func parseCLI() *core.ServerConfig {
 		panic("Could not load config, Aborting: " + err.Error())
 	}
 
+	config.DevMode = devMode
+
 	if config.EmailFile != nil {
+		log.Printf("Load email config from %s\n" , config.EmailFile)
 		var ec email.EmailHandlerConfig
 		//ec1 := make(map[string]interface{})
 		err := fileNameToObject(*config.EmailFile, &ec)
 		if err != nil {
 			panic("Could not load config, Aborting: " + err.Error())
 		}
-
 		config.EmailConfig = &ec
 	}
-	if config.PdfFile != nil {
 
+	if config.PdfFile != nil {
+		log.Printf("Load pdf config from %s\n" , config.PdfFile)
 		var ec pdf.PdfHandlerConfig
 		//ec1 := make(map[string]interface{})
 		err := fileNameToObject(*config.PdfFile, &ec)

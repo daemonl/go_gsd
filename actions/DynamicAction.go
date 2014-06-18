@@ -39,6 +39,11 @@ func (r *DynamicHandler) HandleRequest(ac ActionCore, requestObject interface{})
 		return nil, ErrF("Request Type Mismatch")
 	}
 
+	db, err := ac.DB()
+	if err != nil{
+		return nil, err
+	}
+
 	model := r.Core.GetModel()
 
 	//dr := r.Runner
@@ -48,5 +53,5 @@ func (r *DynamicHandler) HandleRequest(ac ActionCore, requestObject interface{})
 		return nil, ErrF("No registered dynamic function named '%s'", cqr.FunctionName)
 	}
 
-	return r.Core.RunDynamic(fnConfig.Filename, cqr.Parameters)
+	return r.Core.RunDynamic(fnConfig.Filename, cqr.Parameters, db)
 }

@@ -3,6 +3,7 @@ package socket
 import (
 	"bufio"
 	"code.google.com/p/go.net/websocket"
+	"database/sql"
 	"encoding/json"
 	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/torch"
@@ -19,6 +20,7 @@ type Manager struct {
 	websocketHandler websocket.Handler
 	sessionStore     *torch.SessionStore
 	OpenSockets      []*OpenSocket
+	GetDatabase func(*torch.Session) (*sql.DB, error)
 }
 
 type SocketMessage interface {
@@ -36,9 +38,11 @@ type StringSocketMessage struct {
 func (ssm *StringSocketMessage) GetFunctionName() string {
 	return ssm.FunctionName
 }
+
 func (ssm *StringSocketMessage) GetResponseId() string {
 	return ssm.ResponseId
 }
+
 func (ssm *StringSocketMessage) PipeMessage(w io.Writer) {
 	w.Write([]byte(ssm.Message))
 }
@@ -110,7 +114,7 @@ func (m *Manager) listener(ws *websocket.Conn) {
 		Sender:  make(chan SocketMessage, 5),
 		Closer:  make(chan bool),
 		Manager: m,
-		UID:     nextUID,
+		UID:     nextUID, 
 	}
 	nextUID++
 	m.OpenSockets = append(m.OpenSockets, &os)

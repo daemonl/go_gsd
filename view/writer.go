@@ -1,11 +1,12 @@
 package view
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"io"
 )
 
@@ -21,13 +22,12 @@ type TemplateConfig struct {
 }
 
 type TemplateWriter struct {
-	Bath        *databath.Bath
 	Model       *databath.Model
 	ViewManager *ViewManager
 	Runner      *dynamic.DynamicRunner
 }
 
-func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryConditions, context *databath.MapContext) ([]map[string]interface{}, error) {
+func (h *TemplateWriter) DoSelect(db *sql.DB, rawQueryConditions *databath.RawQueryConditions, context *databath.MapContext) ([]map[string]interface{}, error) {
 	queryConditions, err := rawQueryConditions.TranslateToQuery()
 	if err != nil {
 		return nil, err
@@ -41,10 +41,6 @@ func (h *TemplateWriter) DoSelect(rawQueryConditions *databath.RawQueryCondition
 	if err != nil {
 		return nil, err
 	}
-
-	c := h.Bath.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
 
 	allRows, err := query.RunQueryWithResults(db, sqlString, parameters)
 	if err != nil {
@@ -69,7 +65,12 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 		Fieldset:   &fieldset,
 	}
 
-	results, err := h.DoSelect(&rawQueryCondition, &context)
+	db, err := requestTorch.DB()
+	if err != nil {
+		return err
+	}
+
+	results, err := h.DoSelect(db, &rawQueryCondition, &context)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -85,7 +86,7 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 	}
 
 	for key, qc := range templateConfig.Queries {
-		results2, err := h.DoSelect(qc, &context)
+		results2, err := h.DoSelect(db, qc, &context)
 		if err != nil {
 			fmt.Println(err)
 			return err
@@ -106,7 +107,8 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 			"requestQuery": queryMap,
 			"queries":      emailParameters,
 		}
-		javascriptData, err = h.Runner.Run(templateConfig.ScriptName, scriptParameters)
+		javascriptData, err = h.Runner.Run(templateConfig.ScriptName, scriptParameters, db)
+
 		if err != nil {
 			fmt.Println(err)
 			return err

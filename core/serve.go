@@ -11,8 +11,8 @@ import (
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
-	"github.com/daemonl/go_lib/databath"
-	"github.com/daemonl/go_lib/databath/sync"
+	"github.com/daemonl/databath"
+	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_lib/google_auth"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -81,8 +81,6 @@ func (config *ServerConfig) ReloadHandle(requestTorch *torch.Request) {
 
 func GetCore(config *ServerConfig) (core *GSDCore, err error) {
 
-	bath := databath.RunABath(config.Database.Driver, config.Database.DataSourceName, config.Database.PoolSize)
-
 	model, err := databath.ReadModelFromFile(config.ModelFile)
 	if err != nil {
 		log.Println("COULD NOT READ MODEL FILE")
@@ -91,13 +89,11 @@ func GetCore(config *ServerConfig) (core *GSDCore, err error) {
 	}
 
 	core = &GSDCore{
-		Bath:   bath,
 		Model:  model,
 		Config: config,
 	}
 
 	core.Runner = &dynamic.DynamicRunner{
-		DataBath:      core.Bath,
 		BaseDirectory: core.Config.ScriptDirectory, // "/home/daemonl/schkit/impl/pov/script/",
 		SendMail:      core.SendMail,
 	}
@@ -106,7 +102,7 @@ func GetCore(config *ServerConfig) (core *GSDCore, err error) {
 		Core: core,
 	}
 
-	return
+	return core, err
 
 }
 
@@ -115,9 +111,10 @@ func Sync(config *ServerConfig, force bool) error {
 	if err != nil {
 		return err
 	}
-
-	conn := core.Bath.GetConnection()
-	db := conn.GetDB()
+	db, err := core.DB(nil)
+	if err != nil {
+		return err
+	}
 	sync.SyncDb(db, core.GetModel(), force)
 	return nil
 
@@ -133,8 +130,8 @@ func Serve(config *ServerConfig) error {
 
 	parser := torch.Parser{
 		Store:          torch.InMemorySessionStore(),
-		Bath:           core.Bath,
 		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
+		GetDatabase:    core.DB,
 	}
 
 	if config.SessionDumpFile != nil {
@@ -144,13 +141,16 @@ func Serve(config *ServerConfig) error {
 		if err != nil {
 			log.Printf("Could not load sessions: %s\n", err.Error())
 		} else {
-			conn := core.Bath.GetConnection()
-			db := conn.GetDB()
-			parser.Store.LoadSessions(sessFile, func(id uint64) (*torch.User, error) {
-				return torch.LoadUserById(db, id)
-			})
-			conn.Release()
-			sessFile.Close()
+			db, err := core.UsersDatabase()
+			if err != nil {
+				log.Printf("Could not load sessions: %s\n", err.Error())
+				sessFile.Close()
+			} else {
+				parser.Store.LoadSessions(sessFile, func(id uint64) (*torch.User, error) {
+					return torch.LoadUserById(db, id)
+				})
+				sessFile.Close()
+			}
 		}
 		log.Println("-\n========\nEND SESSIONS\n========")
 	}
@@ -205,7 +205,6 @@ func Serve(config *ServerConfig) error {
 	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
 
 	templateWriter := view.TemplateWriter{
-		Bath:        core.Bath,
 		Model:       model,
 		ViewManager: config.ViewManager,
 		Runner:      core.Runner,
@@ -239,8 +238,8 @@ func Serve(config *ServerConfig) error {
 	if err != nil {
 		log.Panic(err)
 	}
-	fileHandler := file.GetFileHandler(config.UploadDirectory, core.Bath, model)
-	csvHandler := csv.GetCsvHandler(core.Bath, model)
+	fileHandler := file.GetFileHandler(config.UploadDirectory, model)
+	csvHandler := csv.GetCsvHandler(model)
 
 	if config.OAuthConfig != nil {
 		oauthHandler := google_auth.OAuthHandler{
@@ -271,7 +270,13 @@ func Serve(config *ServerConfig) error {
 
 		log.Printf("RUN SCRIPT %s\n", script)
 
-		_, err := core.Runner.Run(script+".js", map[string]interface{}{"path": parts[2:]})
+		db, err := core.UsersDatabase()
+		if err != nil {
+			log.Println(err)
+			w.Write([]byte("ERROR"))
+			return
+		}
+		_, err = core.Runner.Run(script+".js", map[string]interface{}{"path": parts[2:]}, db)
 		if err != nil {
 			log.Println(err)
 			w.Write([]byte("ERROR"))

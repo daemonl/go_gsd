@@ -2,7 +2,7 @@ package actions
 
 import (
 	"github.com/daemonl/go_gsd/shared_structs"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 )
 
 type CreateQuery struct {
@@ -33,6 +33,11 @@ func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 
 	session := ac.GetSession()
 
+	db, err := ac.DB()
+	if err != nil {
+		return nil, err
+	}
+
 	qc := databath.GetMinimalQueryConditions(createRequest.Collection, "form")
 
 	model := r.Core.GetModel()
@@ -50,16 +55,12 @@ func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		Fields:     createRequest.Values,
 	}
 
-	r.Core.DoHooksPreAction(actionSummary)
+	r.Core.DoHooksPreAction(db, actionSummary)
 
 	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
 		return nil, err
 	}
-
-	c := r.Core.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
 
 	res, err := db.Exec(sqlString, parameters...)
 	if err != nil {
@@ -82,7 +83,7 @@ func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		"object":     createRequest.Values,
 	}
 
-	go r.Core.DoHooksPostAction(actionSummary)
+	go r.Core.DoHooksPostAction(db, actionSummary)
 	go ac.Broadcast("create", createObject)
 	return result, nil
 }

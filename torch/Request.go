@@ -1,9 +1,10 @@
 package torch
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,17 +14,23 @@ import (
 type Request struct {
 	writer  http.ResponseWriter
 	raw     *http.Request
-	DbConn  *databath.Connection
+	db      *sql.DB
 	Session *Session
 	Method  string
+}
+
+func (r *Request) DB() (*sql.DB, error) {
+	return r.db, nil
 }
 
 func (r *Request) GetWriter() http.ResponseWriter {
 	return r.writer
 }
+
 func (r *Request) GetRaw() (http.ResponseWriter, *http.Request) {
 	return r.writer, r.raw
 }
+
 func (r *Request) UrlMatch(dest ...interface{}) error {
 	urlParts := strings.Split(r.raw.URL.Path[1:], "/")
 	if len(urlParts) != len(dest) {

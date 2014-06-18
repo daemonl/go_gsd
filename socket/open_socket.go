@@ -2,9 +2,10 @@ package socket
 
 import (
 	"code.google.com/p/go.net/websocket"
+	"database/sql"
 	"encoding/json"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"log"
 )
 
@@ -20,6 +21,10 @@ type OpenSocket struct {
 
 type socketError struct {
 	Message string `json:"message"`
+}
+
+func (os *OpenSocket) DB() (*sql.DB, error) {
+	return os.Manager.GetDatabase(os.Session)
 }
 
 func (os *OpenSocket) Close() {

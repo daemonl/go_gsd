@@ -2,7 +2,6 @@ package dynamic
 
 import (
 	"database/sql"
-	"github.com/daemonl/go_lib/databath"
 	"github.com/robertkrimen/otto"
 	"io/ioutil"
 	"log"
@@ -12,7 +11,6 @@ import (
 
 type DynamicRunner struct {
 	BaseDirectory string
-	DataBath      *databath.Bath
 	SendMail      func(to string, subject string, body string)
 }
 
@@ -25,28 +23,29 @@ type RunContext struct {
 	EndChan      chan bool
 }
 
-func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}) (map[string]interface{}, error) {
+func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error) {
 
+	log.Println("OTTO FUNC START")
 	file, err := os.Open(dr.BaseDirectory + filename)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	script, err := ioutil.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
 
-	connection := dr.DataBath.GetConnection()
-	defer connection.Release()
-
 	rc := RunContext{
 		runner:   dr,
 		otto:     otto.New(),
-		db:       connection.GetDB(),
+		db:       db,
 		Response: make(map[string]interface{}),
 		EndChan:  make(chan bool),
 	}
+
+	log.Println("OTTO SETUP COMPLETE")
 
 	rc.otto.Interrupt = make(chan func())
 
@@ -242,12 +241,12 @@ func (rc *RunContext) SqlQuery(call otto.FunctionCall) otto.Value {
 	if err != nil {
 		return rc.Err(err.Error())
 	}
+	defer res.Close()
 
 	cols, err := res.Columns()
 	if err != nil {
 		return rc.Err(err.Error())
 	}
-	defer res.Close()
 
 	for res.Next() {
 		rowInterfaces := make([]*string, len(cols), len(cols))

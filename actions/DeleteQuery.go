@@ -1,7 +1,7 @@
 package actions
 
 import (
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"strings"
 )
 
@@ -34,9 +34,10 @@ func (r *DeleteQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		return nil, err
 	}
 
-	c := r.Core.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
+	db, err := ac.DB()
+	if err != nil{
+		return nil, err
+	}
 
 	deleteCheckResult, err := query.CheckDelete(db, deleteRequest.Id)
 	if err != nil {

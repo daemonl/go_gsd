@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	"log"
 	"strings"
 )
@@ -14,7 +14,6 @@ type EmailHandler struct {
 	SmtpConfig     *SmtpConfig
 	Sender         *Sender
 	HandlerConfig  *EmailHandlerConfig
-	Bath           *databath.Bath
 	Model          *databath.Model
 	TemplateWriter *view.TemplateWriter
 }

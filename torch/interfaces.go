@@ -9,3 +9,4 @@ type Handler interface {
 	GetRequestObject() interface{}
 	HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error)
 }
+

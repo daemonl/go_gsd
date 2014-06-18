@@ -28,9 +28,10 @@ func (r *CustomQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		return nil, ErrF("No custom query called '%s'", cqr.QueryName)
 	}
 
-	c := r.Core.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
+	db, err := ac.DB()
+	if err != nil{
+		return nil, err
+	}
 
 	results, err := customQuery.Run(db, cqr.Parameters)
 	if err != nil {

@@ -2,7 +2,7 @@ package actions
 
 import (
 	"github.com/daemonl/go_gsd/shared_structs"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 )
 
 type UpdateQuery struct {
@@ -31,6 +31,10 @@ func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 
 	session := ac.GetSession()
 	model := r.Core.GetModel()
+	db, err := ac.DB()
+	if err != nil{
+		return nil, err
+	}
 
 	query, err := databath.GetQuery(ac.GetContext(), model, queryConditions, true)
 	if err != nil {
@@ -44,16 +48,14 @@ func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 			Pk:         *updateRequest.Conditions.Pk,
 			Fields:     updateRequest.Changeset,
 		}
-		r.Core.DoHooksPreAction(actionSummary)
+		r.Core.DoHooksPreAction(db, actionSummary)
 	}
 	sqlString, parameters, err := query.BuildUpdate(updateRequest.Changeset)
 	if err != nil {
 		return nil, err
 	}
 
-	c := r.Core.GetConnection()
-	db := c.GetDB()
-	defer c.Release()
+	
 	resp, err := db.Exec(sqlString, parameters...)
 	if err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 			Pk:         *updateRequest.Conditions.Pk,
 			Fields:     updateRequest.Changeset,
 		}
-		go r.Core.DoHooksPostAction(actionSummary)
+		go r.Core.DoHooksPostAction(db, actionSummary)
 
 	}
 	return map[string]int64{"affected": rows}, nil

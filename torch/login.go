@@ -35,18 +35,18 @@ func LoadUserById(db *sql.DB, id uint64) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	if !rows.Next() {
 		return nil, errors.New("Could not find a user in the session store")
 	}
-
 	user := &User{}
 	rows.Scan(&user.Id, &user.Username, &user.password, &user.Access, &user.SetOnNextLogin)
-	rows.Close()
 	return user, nil
 }
+
 func doLogin(requestTorch *Request, noPassword bool, username string, password string) {
 
-	db := requestTorch.DbConn.GetDB()
+	db := requestTorch.db
 
 	rows, err := db.Query(`SELECT id, username, password, access, set_on_next_login FROM staff WHERE username = ?`, username)
 	if err != nil {
@@ -54,6 +54,7 @@ func doLogin(requestTorch *Request, noPassword bool, username string, password s
 		log.Fatal(err)
 		return
 	}
+	defer rows.Close()
 
 	canHaz := rows.Next()
 	if !canHaz {

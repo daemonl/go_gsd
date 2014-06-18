@@ -2,7 +2,7 @@ package dynamic
 
 import (
 	"fmt"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 	_ "github.com/go-sql-driver/mysql"
 	"testing"
 )

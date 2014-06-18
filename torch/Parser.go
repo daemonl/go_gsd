@@ -1,24 +1,28 @@
 package torch
 
 import (
-	"github.com/daemonl/go_lib/databath"
+	"database/sql"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"regexp"
 	"strings"
 )
 
 type Parser struct {
 	Store          *SessionStore
-	Bath           *databath.Bath
+	DB             *sql.DB
+	GetDatabase    func(session *Session) (*sql.DB, error)
 	PublicPatterns []*regexp.Regexp
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
 func (parser *Parser) WrapReturn(handler func(*Request)) func(w http.ResponseWriter, r *http.Request) *Request {
 	return func(w http.ResponseWriter, r *http.Request) *Request {
-		//log.Printf("Begin Request")
-		//defer log.Printf("End Request")
+		log.Printf("Begin Request %s\n", r.RequestURI)
+		d, _ := httputil.DumpRequest(r, false)
+		log.Println(string(d))
+		defer log.Printf("End Request\n")
 
 		requestTorch, err := parser.ParseRequest(w, r)
 		if err != nil {
@@ -87,9 +91,7 @@ func (parser *Parser) ParseRequest(w http.ResponseWriter, r *http.Request) (*Req
 		writer: w,
 		raw:    r,
 		Method: r.Method,
-		DbConn: parser.Bath.GetConnection(),
 	}
-	defer request.DbConn.Release()
 
 	sessCookie, err := r.Cookie("gsd_session")
 	if err != nil {
@@ -103,5 +105,10 @@ func (parser *Parser) ParseRequest(w http.ResponseWriter, r *http.Request) (*Req
 		}
 	}
 
+	db, err := parser.GetDatabase(request.Session)
+	if err != nil {
+		return nil, err
+	}
+	request.db = db
 	return &request, nil
 }

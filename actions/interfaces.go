@@ -1,15 +1,17 @@
 package actions
 
 import (
+	"database/sql"
 	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/databath"
+	"github.com/daemonl/databath"
 )
 
 type ActionCore interface {
 	GetSession() *torch.Session
 	Broadcast(functionName string, object interface{})
 	GetContext() databath.Context
+	DB() (*sql.DB, error)
 }
 
 type Handler interface {
@@ -18,10 +20,10 @@ type Handler interface {
 }
 
 type Core interface {
-	GetConnection() *databath.Connection
-	DoHooksPreAction(as *shared_structs.ActionSummary)
-	DoHooksPostAction(as *shared_structs.ActionSummary)
+	DB(session *torch.Session) (*sql.DB, error)
+	DoHooksPreAction(db *sql.DB, as *shared_structs.ActionSummary)
+	DoHooksPostAction(db *sql.DB, as *shared_structs.ActionSummary)
 	GetModel() *databath.Model
-	RunDynamic(filename string, parameters map[string]interface{}) (map[string]interface{}, error)
+	RunDynamic(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error)
 	SendMail(to string, subject string, body string)
 }

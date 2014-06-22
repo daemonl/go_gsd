@@ -11,13 +11,13 @@ type customQueryRequest struct {
 	Parameters []interface{} `json:"parameters"`
 }
 
-func (q *CustomQuery) GetRequestObject() interface{} {
+func (q *CustomQuery) RequestDataPlaceholder() interface{} {
 	r := customQueryRequest{}
 	return &r
 }
 
-func (r *CustomQuery) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
-	cqr, ok := requestObject.(*customQueryRequest)
+func (r *CustomQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+	cqr, ok := requestData.(*customQueryRequest)
 	if !ok {
 		return nil, ErrF("Request Type Mismatch")
 	}
@@ -28,8 +28,8 @@ func (r *CustomQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		return nil, ErrF("No custom query called '%s'", cqr.QueryName)
 	}
 
-	db, err := ac.DB()
-	if err != nil{
+	db, err := request.DB()
+	if err != nil {
 		return nil, err
 	}
 

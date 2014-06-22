@@ -87,3 +87,29 @@ func (r *Request) GetContext() databath.Context {
 	context.Fields["user"] = r.Session.User.Id
 	return context
 }
+
+func (request *Request) End() {
+
+}
+
+func (request *Request) Write(content string) {
+	request.writer.Write([]byte(content))
+}
+
+func (request *Request) Writef(format string, params ...interface{}) {
+	request.Write(fmt.Sprintf(format, params...))
+}
+
+func (request *Request) PostValueString(name string) string {
+	return request.raw.PostFormValue(name)
+}
+
+func (request *Request) Redirect(to string) {
+	http.Redirect(request.writer, request.raw, to, 302)
+}
+
+func (request *Request) NewSession(store *SessionStore) {
+	request.Session = store.NewSession()
+	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 86400, Value: *request.Session.Key}
+	request.writer.Header().Add("Set-Cookie", c.String())
+}

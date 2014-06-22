@@ -13,11 +13,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/daemonl/databath"
+	"database/sql"
 	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/csv"
-	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/file"
 	"github.com/daemonl/go_gsd/pdf"
@@ -43,101 +42,47 @@ func signupHandle(requestTorch *torch.Request) {
 	requestTorch.Write(hashStore)
 }
 
-type ServerConfig_Database struct {
-	Driver         string `json:"driver"`
-	DataSourceName string `json:"dsn"`
-	PoolSize       int    `json:"poolSize"`
-}
-type ServerConfig struct {
-	Database            ServerConfig_Database `json:"database"`
-	ModelFile           string                `json:"modelFile"`
-	TemplateRoot        string                `json:"templateRoot"`
-	WebRoot             string                `json:"webRoot"`
-	BindAddress         string                `json:"bindAddress"`
-	PublicPatternsRaw   []string              `json:"publicPatterns"`
-	UploadDirectory     string                `json:"uploadDirectory"`
-	TemplateIncludeRoot string                `json:"templateIncludeRoot"`
-	ScriptDirectory     string                `json:"scriptDirectory"`
-	DevMode             bool
-
-	EmailConfig     *email.EmailHandlerConfig
-	EmailFile       *string           `json:"emailFile"`
-	SmtpConfig      *email.SmtpConfig `json:"smtpConfig"`
-	SessionDumpFile *string           `json:"sessionDumpFile"`
-
-	PdfConfig *pdf.PdfHandlerConfig
-	PdfFile   *string `json:"pdfFile"`
-	PdfBinary *string `json:"pdfBinary"`
-
-	OAuthConfig *google_auth.OAuthConfig `json:"oauth"`
-
-	ViewManager *view.ViewManager
-}
-
-func (config *ServerConfig) ReloadHandle(requestTorch *torch.Request) {
-	err := config.ViewManager.Reload()
-	if err != nil {
-		requestTorch.Writef("Error Loading Views: %s", err.Error())
-		return
-	}
-	requestTorch.Writef("Loaded Views")
-}
-
-func GetCore(config *ServerConfig) (core *GSDCore, err error) {
-
-	model, err := databath.ReadModelFromFile(config.ModelFile)
-	if err != nil {
-		return nil, fmt.Errorf("Error reading model file: %s", err.Error())
-	}
-
-	core = &GSDCore{
-		Model:  model,
-		Config: config,
-	}
-
-	core.Runner = &dynamic.DynamicRunner{
-		BaseDirectory: core.Config.ScriptDirectory, // "/home/daemonl/schkit/impl/pov/script/",
-		SendMail:      core.SendMail,
-	}
-
-	core.Hooker = &Hooker{
-		Core: core,
-	}
-
-	return core, err
-
-}
-
 func Sync(config *ServerConfig, force bool) error {
-	core, err := GetCore(config)
+	core, err := config.GetCore()
 	if err != nil {
 		return err
 	}
-	db, err := core.DB(nil)
+	db, err := core.OpenDatabaseConnection(nil)
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	sync.SyncDb(db, core.GetModel(), force)
 	return nil
 
 }
+
+// Serve starts up a http server with all of the glorious configuration options
 func Serve(config *ServerConfig) error {
 
-	core, err := GetCore(config)
+	core, err := config.GetCore()
 	if err != nil {
 		return err
 	}
+	db, err := sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
+	if err != nil {
+		return err
+	}
+	core.DB = db
 
 	model := core.GetModel()
 
 	parser := torch.Parser{
-		Store:          torch.InMemorySessionStore(),
-		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
-		GetDatabase:    core.DB,
+		Store:                  torch.InMemorySessionStore(),
+		PublicPatterns:         make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
+		OpenDatabaseConnection: core.OpenDatabaseConnection,
 	}
 
+	// Load any sessions which are stored in the session dump file.
+	// This allows for sessions to persist when a normal restart happens.
+
 	if config.SessionDumpFile != nil {
-		log.Println("-\n========\nHIDRATE SESSIONS\n========")
+		log.Println("=== HIDRATE SESSIONS ===")
 
 		sessFile, err := os.Open(*config.SessionDumpFile)
 		if err != nil {
@@ -154,15 +99,18 @@ func Serve(config *ServerConfig) error {
 				sessFile.Close()
 			}
 		}
-		log.Println("-\n========\nEND SESSIONS\n========")
+		log.Println("=== END SESSIONS ===")
 	}
 
+	// Insert the regexes for all 'public' urls
 	for i, pattern := range config.PublicPatternsRaw {
 		reg := regexp.MustCompile(pattern)
 		parser.PublicPatterns[i] = reg
 	}
 
-	actionMap := map[string]socket.Handler{
+	// Register the AJAX and Socket methods (These methods work on both)
+
+	handlerMap := map[string]actions.Handler{
 		"get":     &actions.SelectQuery{Core: core},
 		"set":     &actions.UpdateQuery{Core: core},
 		"create":  &actions.CreateQuery{Core: core},
@@ -174,22 +122,31 @@ func Serve(config *ServerConfig) error {
 
 	socketManager := socket.GetManager(parser.Store)
 
-	for funcName, handler := range actionMap {
+	for funcName, handler := range handlerMap {
 
-		func(funcName string, handler socket.Handler) {
+		func(funcName string, handler actions.Handler) {
+
+			// Register handler with the Socket Manager
 			socketManager.RegisterHandler(funcName, handler)
 
+			// Wrap the action in a torch request
 			rFunc := func(request *torch.Request) {
 
-				requestObject := handler.GetRequestObject()
+				requestData := handler.RequestDataPlaceholder()
 				writer, r := request.GetRaw()
+
+				// Decode request body JSON to object
 				dec := json.NewDecoder(r.Body)
-				err := dec.Decode(requestObject)
+				err := dec.Decode(requestData)
 				if err != nil {
 					request.DoError(err)
 					return
 				}
-				responseObject, err := handler.HandleRequest(request, requestObject)
+
+				// Do the request
+				responseObject, err := handler.HandleRequest(request, requestData)
+
+				// Encode response object as JSON
 				if err != nil {
 					request.DoError(err)
 					return
@@ -198,6 +155,7 @@ func Serve(config *ServerConfig) error {
 				enc.Encode(responseObject)
 			}
 
+			// Add the wrapped torch request to the standard handler.
 			http.HandleFunc("/ajax/"+funcName, parser.Wrap(rFunc))
 		}(funcName, handler)
 	}
@@ -335,10 +293,10 @@ func Serve(config *ServerConfig) error {
 		}
 	}
 
-	log.Printf("= SHUTDOWN INITIATED")
+	log.Printf("=== SHUTDOWN INITIATED ===")
 
 	if config.SessionDumpFile != nil {
-		log.Println("-\n========\nDUMP SESSIONS\n========")
+		log.Println("=== DUMP SESSIONS ===")
 
 		sessFile, err := os.Create(*config.SessionDumpFile)
 		if err != nil {
@@ -349,7 +307,7 @@ func Serve(config *ServerConfig) error {
 		}
 	}
 
-	log.Println("= SHUTDOWN COMPLETE ")
+	log.Println("=== SHUTDOWN COMPLETE ===")
 
 	return nil
 }
@@ -377,6 +335,7 @@ type lessHandler struct {
 }
 
 func (h *lessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println("LESS HANDLER")
 	w.Header().Add("Content-Type", "text/css")
 	c := exec.Command("lessc", h.config.WebRoot+"/"+h.filename)
 	c.Stdout = w

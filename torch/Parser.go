@@ -10,10 +10,10 @@ import (
 )
 
 type Parser struct {
-	Store          *SessionStore
-	DB             *sql.DB
-	GetDatabase    func(session *Session) (*sql.DB, error)
-	PublicPatterns []*regexp.Regexp
+	Store                  *SessionStore
+	DB                     *sql.DB
+	OpenDatabaseConnection func(session *Session) (*sql.DB, error)
+	PublicPatterns         []*regexp.Regexp
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
@@ -24,12 +24,22 @@ func (parser *Parser) WrapReturn(handler func(*Request)) func(w http.ResponseWri
 		log.Println(string(d))
 		defer log.Printf("End Request\n")
 
-		requestTorch, err := parser.ParseRequest(w, r)
+		requestTorch, err := parser.parseRequest(w, r)
 		if err != nil {
 			log.Fatal(err)
 			w.Write([]byte("An error occurred"))
 			return nil
 		}
+
+		db, err := parser.OpenDatabaseConnection(requestTorch.Session)
+		if err != nil {
+			log.Fatal(err)
+			w.Write([]byte("An error occurred"))
+			return nil
+		}
+		requestTorch.db = db
+		//defer requestTorch.db.Close()
+
 		if requestTorch.Session.User == nil {
 			log.Printf("PUBLIC: Check Path %s", r.URL.Path)
 			for _, p := range parser.PublicPatterns {
@@ -86,7 +96,8 @@ func (parser *Parser) WrapSplit(handlers ...func(*Request)) func(w http.Response
 
 // ParseRequest is a utility usually used internally to give a Request object to a standard http request
 // Exported for better flexibility
-func (parser *Parser) ParseRequest(w http.ResponseWriter, r *http.Request) (*Request, error) {
+// ParseRequest opens a database session for request.DB(), It will need to be closed...
+func (parser *Parser) parseRequest(w http.ResponseWriter, r *http.Request) (*Request, error) {
 	request := Request{
 		writer: w,
 		raw:    r,
@@ -105,10 +116,5 @@ func (parser *Parser) ParseRequest(w http.ResponseWriter, r *http.Request) (*Req
 		}
 	}
 
-	db, err := parser.GetDatabase(request.Session)
-	if err != nil {
-		return nil, err
-	}
-	request.db = db
 	return &request, nil
 }

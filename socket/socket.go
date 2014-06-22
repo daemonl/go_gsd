@@ -20,7 +20,7 @@ type Manager struct {
 	websocketHandler websocket.Handler
 	sessionStore     *torch.SessionStore
 	OpenSockets      []*OpenSocket
-	GetDatabase func(*torch.Session) (*sql.DB, error)
+	GetDatabase      func(*torch.Session) (*sql.DB, error)
 }
 
 type SocketMessage interface {
@@ -48,8 +48,8 @@ func (ssm *StringSocketMessage) PipeMessage(w io.Writer) {
 }
 
 type Handler interface {
-	GetRequestObject() interface{}
-	HandleRequest(ac actions.ActionCore, requestObject interface{}) (interface{}, error)
+	RequestDataPlaceholder() interface{}
+	HandleRequest(ac actions.Request, requestObject interface{}) (interface{}, error)
 }
 
 func GetManager(sessionStore *torch.SessionStore) *Manager {
@@ -114,7 +114,7 @@ func (m *Manager) listener(ws *websocket.Conn) {
 		Sender:  make(chan SocketMessage, 5),
 		Closer:  make(chan bool),
 		Manager: m,
-		UID:     nextUID, 
+		UID:     nextUID,
 	}
 	nextUID++
 	m.OpenSockets = append(m.OpenSockets, &os)
@@ -163,7 +163,7 @@ func (m *Manager) parse(raw string, os *OpenSocket) {
 		return
 	}
 
-	requestObj := handlerObj.GetRequestObject()
+	requestObj := handlerObj.RequestDataPlaceholder()
 
 	err := json.Unmarshal([]byte(parts[2]), requestObj)
 	if err != nil {

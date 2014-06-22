@@ -8,14 +8,14 @@ type SelectQuery struct {
 	Core Core
 }
 
-func (q *SelectQuery) GetRequestObject() interface{} {
+func (q *SelectQuery) RequestDataPlaceholder() interface{} {
 	r := databath.RawQueryConditions{}
 	return &r
 }
 
-func (r *SelectQuery) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
+func (r *SelectQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
 
-	rawQueryCondition, ok := requestObject.(*databath.RawQueryConditions)
+	rawQueryCondition, ok := requestData.(*databath.RawQueryConditions)
 	if !ok {
 		return nil, ErrF("Request type mismatch")
 	}
@@ -26,7 +26,7 @@ func (r *SelectQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 
 	model := r.Core.GetModel()
 
-	query, err := databath.GetQuery(ac.GetContext(), model, queryConditions, false)
+	query, err := databath.GetQuery(request.GetContext(), model, queryConditions, false)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (r *SelectQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		return nil, err
 	}
 
-	db, err := ac.DB()
+	db, err := request.DB()
 	if err != nil{
 		return nil, err
 	}

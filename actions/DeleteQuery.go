@@ -14,13 +14,13 @@ type deleteRequest struct {
 	Collection string `json:"collection"`
 }
 
-func (q *DeleteQuery) GetRequestObject() interface{} {
+func (q *DeleteQuery) RequestDataPlaceholder() interface{} {
 	r := deleteRequest{}
 	return &r
 }
 
-func (r *DeleteQuery) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
-	deleteRequest, ok := requestObject.(*deleteRequest)
+func (r *DeleteQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+	deleteRequest, ok := requestData.(*deleteRequest)
 	if !ok {
 		return nil, ErrF("Request Type Mismatch")
 	}
@@ -29,13 +29,13 @@ func (r *DeleteQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 
 	qc := databath.GetMinimalQueryConditions(deleteRequest.Collection, "form")
 
-	query, err := databath.GetQuery(ac.GetContext(), model, qc, true)
+	query, err := databath.GetQuery(request.GetContext(), model, qc, true)
 	if err != nil {
 		return nil, err
 	}
 
-	db, err := ac.DB()
-	if err != nil{
+	db, err := request.DB()
+	if err != nil {
 		return nil, err
 	}
 
@@ -73,7 +73,7 @@ func (r *DeleteQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		"collection": deleteRequest.Collection,
 		"id":         deleteRequest.Id,
 	}
-	go ac.Broadcast("delete", deleteObject)
+	go request.Broadcast("delete", deleteObject)
 
 	return result, nil
 

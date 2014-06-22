@@ -27,20 +27,20 @@ func GetDynamicHandlerFromCore(core *GSDCore) *DynamicHandler {
 }
 */
 
-func (q *DynamicHandler) GetRequestObject() interface{} {
+func (q *DynamicHandler) RequestDataPlaceholder() interface{} {
 	r := dynamicRequest{}
 	return &r
 }
 
-func (r *DynamicHandler) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
+func (r *DynamicHandler) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
 
-	cqr, ok := requestObject.(*dynamicRequest)
+	cqr, ok := requestData.(*dynamicRequest)
 	if !ok {
 		return nil, ErrF("Request Type Mismatch")
 	}
 
-	db, err := ac.DB()
-	if err != nil{
+	db, err := request.DB()
+	if err != nil {
 		return nil, err
 	}
 

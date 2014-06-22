@@ -10,13 +10,13 @@ type PingActionRequest struct {
 	Msg string `json: "msg"`
 }
 
-func (q *PingAction) GetRequestObject() interface{} {
+func (q *PingAction) RequestDataPlaceholder() interface{} {
 	r := PingActionRequest{}
 	return &r
 }
 
-func (r *PingAction) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
-	cqr, ok := requestObject.(*PingActionRequest)
+func (r *PingAction) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+	cqr, ok := requestData.(*PingActionRequest)
 	if !ok {
 		return nil, ErrF("Request Type Mismatch")
 	}

@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/shared_structs"
 )
 
 type UpdateQuery struct {
@@ -14,13 +14,13 @@ type updateRequest struct {
 	Changeset  map[string]interface{}      `json:"changeset"`
 }
 
-func (q *UpdateQuery) GetRequestObject() interface{} {
+func (q *UpdateQuery) RequestDataPlaceholder() interface{} {
 	r := updateRequest{}
 	return &r
 }
 
-func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
-	updateRequest, ok := requestObject.(*updateRequest)
+func (r *UpdateQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+	updateRequest, ok := requestData.(*updateRequest)
 	if !ok {
 		return nil, ErrF("Request type mismatch")
 	}
@@ -29,14 +29,14 @@ func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		return nil, err
 	}
 
-	session := ac.GetSession()
+	session := request.GetSession()
 	model := r.Core.GetModel()
-	db, err := ac.DB()
-	if err != nil{
+	db, err := request.DB()
+	if err != nil {
 		return nil, err
 	}
 
-	query, err := databath.GetQuery(ac.GetContext(), model, queryConditions, true)
+	query, err := databath.GetQuery(request.GetContext(), model, queryConditions, true)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,6 @@ func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		return nil, err
 	}
 
-	
 	resp, err := db.Exec(sqlString, parameters...)
 	if err != nil {
 		return nil, err
@@ -67,7 +66,7 @@ func (r *UpdateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 		"id":         updateRequest.Conditions.Pk,
 	}
 
-	go ac.Broadcast("update", updateObject)
+	go request.Broadcast("update", updateObject)
 	if updateRequest.Conditions.Pk != nil {
 		actionSummary := &shared_structs.ActionSummary{
 			UserId:     session.User.Id,

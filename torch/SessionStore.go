@@ -8,42 +8,14 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
-	"strings"
-
 	"strconv"
+	"strings"
 	"time"
 )
-
-type Session struct {
-	Key         *string // Points to the actual key
-	User        *User
-	Store       *SessionStore
-	Flash       []FlashMessage
-	LoginTarget *string
-	LastRequest time.Time
-}
 
 type SessionStore struct {
 	sessions  map[string]*Session
 	Broadcast func(name string, val interface{})
-}
-
-type FlashMessage struct {
-	Severity string
-	Message  string
-}
-
-func (s *Session) AddFlash(severity, format string, parameters ...interface{}) {
-	fm := FlashMessage{
-		Severity: severity,
-		Message:  fmt.Sprintf(format, parameters...),
-	}
-	s.Flash = append(s.Flash, fm)
-}
-
-func (s *Session) ResetFlash() {
-	s.Flash = make([]FlashMessage, 0, 0)
 }
 
 func InMemorySessionStore() *SessionStore {
@@ -97,7 +69,6 @@ func (ss *SessionStore) LoadSessions(r io.Reader, loadUser func(uint64) (*User, 
 }
 
 func (ss *SessionStore) StartExpiry() {
-
 	for {
 		time.Sleep(time.Second * 10)
 
@@ -133,30 +104,4 @@ func (ss *SessionStore) GetSession(key string) (*Session, error) {
 	}
 	sess.LastRequest = time.Now()
 	return sess, nil
-}
-
-func (request *Request) End() {
-
-}
-
-func (request *Request) Write(content string) {
-	request.writer.Write([]byte(content))
-}
-
-func (request *Request) Writef(format string, params ...interface{}) {
-	request.Write(fmt.Sprintf(format, params...))
-}
-
-func (request *Request) PostValueString(name string) string {
-	return request.raw.PostFormValue(name)
-}
-
-func (request *Request) Redirect(to string) {
-	http.Redirect(request.writer, request.raw, to, 302)
-}
-
-func (request *Request) NewSession(store *SessionStore) {
-	request.Session = store.NewSession()
-	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 86400, Value: *request.Session.Key}
-	request.writer.Header().Add("Set-Cookie", c.String())
 }

@@ -16,10 +16,12 @@ type GSDCore struct {
 	Hooker *Hooker
 	Config *ServerConfig
 	Runner *dynamic.DynamicRunner
+	DB *sql.DB
 }
 
-func (core *GSDCore) DB(session *torch.Session) (*sql.DB, error) {
-	return sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
+func (core *GSDCore) OpenDatabaseConnection(session *torch.Session) (*sql.DB, error) {
+	return core.DB, nil
+	//return sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
 }
 
 func (core *GSDCore) UsersDatabase() (*sql.DB, error) {

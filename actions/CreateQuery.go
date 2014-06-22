@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/shared_structs"
 )
 
 type CreateQuery struct {
@@ -20,20 +20,20 @@ type createResult struct {
 	InsertId int64  `json:"id"`
 }
 
-func (q *CreateQuery) GetRequestObject() interface{} {
+func (q *CreateQuery) RequestDataPlaceholder() interface{} {
 	r := createRequest{}
 	return &r
 }
 
-func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error) {
+func (r *CreateQuery) HandleRequest(request Request, requestObject interface{}) (interface{}, error) {
 	createRequest, ok := requestObject.(*createRequest)
 	if !ok {
 		return nil, ErrF("Request Type Mismatch")
 	}
 
-	session := ac.GetSession()
+	session := request.GetSession()
 
-	db, err := ac.DB()
+	db, err := request.DB()
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 
 	model := r.Core.GetModel()
 
-	query, err := databath.GetQuery(ac.GetContext(), model, qc, true)
+	query, err := databath.GetQuery(request.GetContext(), model, qc, true)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +84,6 @@ func (r *CreateQuery) HandleRequest(ac ActionCore, requestObject interface{}) (i
 	}
 
 	go r.Core.DoHooksPostAction(db, actionSummary)
-	go ac.Broadcast("create", createObject)
+	go request.Broadcast("create", createObject)
 	return result, nil
 }

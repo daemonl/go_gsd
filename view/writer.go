@@ -25,6 +25,7 @@ type TemplateWriter struct {
 	Model       *databath.Model
 	ViewManager *ViewManager
 	Runner      *dynamic.DynamicRunner
+	DB *sql.DB
 }
 
 func (h *TemplateWriter) DoSelect(db *sql.DB, rawQueryConditions *databath.RawQueryConditions, context *databath.MapContext) ([]map[string]interface{}, error) {
@@ -65,11 +66,13 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 		Fieldset:   &fieldset,
 	}
 
+	db := h.DB
+/*	
 	db, err := requestTorch.DB()
 	if err != nil {
 		return err
 	}
-
+*/
 	results, err := h.DoSelect(db, &rawQueryCondition, &context)
 	if err != nil {
 		fmt.Println(err)

@@ -168,6 +168,7 @@ func Serve(config *ServerConfig) error {
 		Model:       model,
 		ViewManager: config.ViewManager,
 		Runner:      core.Runner,
+		DB: db,
 	}
 
 	loginViewHandler := view.ViewHandler{

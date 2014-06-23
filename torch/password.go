@@ -29,7 +29,7 @@ func HashPassword(plaintext string) string {
 	return base64.URLEncoding.EncodeToString(append(saltBytes, hashBytes...))
 }
 
-func (u *User) CheckPassword(plaintext string) (bool, error) {
+func (u *basicUser) CheckPassword(plaintext string) (bool, error) {
 
 	// Deocde the hash string
 	stored, err := base64.URLEncoding.DecodeString(u.password)

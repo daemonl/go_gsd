@@ -6,19 +6,21 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"regexp"
-	"strings"
 )
 
 type Parser struct {
-	Store                  *SessionStore
+	Store                  SessionStore
 	DB                     *sql.DB
 	OpenDatabaseConnection func(session *Session) (*sql.DB, error)
 	PublicPatterns         []*regexp.Regexp
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
-func (parser *Parser) WrapReturn(handler func(*Request)) func(w http.ResponseWriter, r *http.Request) *Request {
-	return func(w http.ResponseWriter, r *http.Request) *Request {
+func (parser *Parser) Wrap(handler func(Request)) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		// Verbose request logging
 		log.Printf("Begin Request %s\n", r.RequestURI)
 		d, _ := httputil.DumpRequest(r, false)
 		log.Println(string(d))
@@ -28,46 +30,38 @@ func (parser *Parser) WrapReturn(handler func(*Request)) func(w http.ResponseWri
 		if err != nil {
 			log.Fatal(err)
 			w.Write([]byte("An error occurred"))
-			return nil
+			return
 		}
+		defer requestTorch.Cleanup()
 
-		db, err := parser.OpenDatabaseConnection(requestTorch.Session)
-		if err != nil {
-			log.Fatal(err)
-			w.Write([]byte("An error occurred"))
-			return nil
-		}
-		requestTorch.db = db
-		//defer requestTorch.db.Close()
+		/*
+			db, err := parser.OpenDatabaseConnection(requestTorch.Session)
+			if err != nil {
+				log.Fatal(err)
+				w.Write([]byte("An error occurred"))
+				return
+			}
+			requestTorch.db = db
+			//defer requestTorch.db.Close()
+		*/
 
-		if requestTorch.Session.User == nil {
+		if !requestTorch.IsLoggedIn() {
 			log.Printf("PUBLIC: Check Path %s", r.URL.Path)
 			for _, p := range parser.PublicPatterns {
 				log.Println(p.String())
 				if p.MatchString(r.URL.Path) {
 					log.Printf("PUBLIC: Matched Public Path %s", p.String())
 					handler(requestTorch)
-					return requestTorch
+					return
 				}
 			}
 
 			log.Println("PUBLIC: No Public Pathes Matched")
-			if strings.HasSuffix(r.URL.Path, ".html") {
-				requestTorch.Session.LoginTarget = &r.URL.Path
-			}
+
 			requestTorch.Redirect("/login")
 		} else {
 			handler(requestTorch)
 		}
-		return requestTorch
-	}
-}
-
-func (parser *Parser) Wrap(handler func(*Request)) func(w http.ResponseWriter, r *http.Request) {
-	f := parser.WrapReturn(handler)
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		_ = f(w, r)
 		return
 	}
 }
@@ -78,11 +72,11 @@ func (parser *Parser) Wrap(handler func(*Request)) func(w http.ResponseWriter, r
 // Ideally the methods should be registered separately, but that requires taking over more of the default
 // functionality in httpRequestHandler which is not the plan at this stage. - These are Helpers, not a framework.
 // (Who am I kidding, I love building frameworks)
-func (parser *Parser) WrapSplit(handlers ...func(*Request)) func(w http.ResponseWriter, r *http.Request) {
+func (parser *Parser) WrapSplit(handlers ...func(Request)) func(w http.ResponseWriter, r *http.Request) {
 	methods := []string{"GET", "POST", "PUT", "DELETE"}
-	return parser.Wrap(func(request *Request) {
+	return parser.Wrap(func(request Request) {
 		for i, m := range methods {
-			if request.Method == m {
+			if request.Method() == m {
 				if len(handlers) > i && handlers[i] != nil {
 					handlers[i](request)
 				} else {
@@ -97,22 +91,21 @@ func (parser *Parser) WrapSplit(handlers ...func(*Request)) func(w http.Response
 // ParseRequest is a utility usually used internally to give a Request object to a standard http request
 // Exported for better flexibility
 // ParseRequest opens a database session for request.DB(), It will need to be closed...
-func (parser *Parser) parseRequest(w http.ResponseWriter, r *http.Request) (*Request, error) {
-	request := Request{
+func (parser *Parser) parseRequest(w http.ResponseWriter, r *http.Request) (Request, error) {
+	request := basicRequest{
 		writer: w,
 		raw:    r,
-		Method: r.Method,
 	}
 
 	sessCookie, err := r.Cookie("gsd_session")
 	if err != nil {
-		request.NewSession(parser.Store)
+		request.ResetSession()
 	} else {
 		sess, err := parser.Store.GetSession(sessCookie.Value)
 		if err != nil {
-			request.NewSession(parser.Store)
+			request.ResetSession()
 		} else {
-			request.Session = sess
+			request.session = sess
 		}
 	}
 

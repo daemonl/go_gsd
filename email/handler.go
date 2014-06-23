@@ -3,9 +3,9 @@ package email
 import (
 	"bytes"
 	"errors"
+	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
-	"github.com/daemonl/databath"
 	"log"
 	"strings"
 )
@@ -44,24 +44,24 @@ func GetEmailHandler(smtpConfig *SmtpConfig, handlerConfig *EmailHandlerConfig, 
 	return &eh, nil
 }
 
-func (h *EmailHandler) Preview(requestTorch *torch.Request) {
+func (h *EmailHandler) Preview(request torch.Request) {
 	functionName := ""
 	emailName := ""
 	var id uint64
 
-	err := requestTorch.UrlMatch(&functionName, &emailName, &id)
+	err := request.URLMatch(&functionName, &emailName, &id)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	w := requestTorch.GetWriter()
+	w, _ := request.GetRaw()
 	w.Header().Add("content-type", "text/html")
 	emailConfig, ok := h.HandlerConfig.Templates[emailName]
 	if !ok {
 		log.Println("Template not found")
 		return
 	}
-	err = h.TemplateWriter.Write(w, requestTorch, &emailConfig, id)
+	err = h.TemplateWriter.Write(w, request, &emailConfig, id)
 	if err != nil {
 		log.Println(err)
 		return
@@ -69,22 +69,22 @@ func (h *EmailHandler) Preview(requestTorch *torch.Request) {
 
 }
 
-func (h *EmailHandler) Send(requestTorch *torch.Request) {
+func (h *EmailHandler) Send(request torch.Request) {
 	functionName := ""
 	emailName := ""
 	var id uint64
 	recipientRaw := ""
 	notes := ""
 
-	err := requestTorch.UrlMatch(&functionName, &emailName, &id, &recipientRaw, &notes)
+	err := request.URLMatch(&functionName, &emailName, &id, &recipientRaw, &notes)
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 
 	recipients := strings.Split(recipientRaw, ";")
 	for _, recipient := range recipients {
-		h.SendMailNow(emailName, id, strings.TrimSpace(recipient), notes, requestTorch)
+		h.SendMailNow(emailName, id, strings.TrimSpace(recipient), notes, request)
 	}
 
 }
@@ -100,14 +100,14 @@ func dropLine(in *string) (string, error) {
 
 	return parts[0], nil
 }
-func (h *EmailHandler) SendMailNow(emailName string, id uint64, recipient string, notes string, requestTorch *torch.Request) {
+func (h *EmailHandler) SendMailNow(emailName string, id uint64, recipient string, notes string, request torch.Request) {
 	w := bytes.Buffer{}
 	emailConfig, ok := h.HandlerConfig.Templates[emailName]
 	if !ok {
-		requestTorch.DoErrorf("Template %s not found", emailName)
+		request.DoErrorf("Template %s not found", emailName)
 		return
 	}
-	err := h.TemplateWriter.Write(&w, requestTorch, &emailConfig, id)
+	err := h.TemplateWriter.Write(&w, request, &emailConfig, id)
 	if err != nil {
 		log.Println(err)
 		return
@@ -115,8 +115,8 @@ func (h *EmailHandler) SendMailNow(emailName string, id uint64, recipient string
 	html := w.String()
 	subject, err := dropLine(&html)
 	if err != nil {
-		if requestTorch != nil {
-			requestTorch.DoError(err)
+		if request != nil {
+			request.DoError(err)
 		} else {
 			log.Println(err)
 		}
@@ -126,8 +126,8 @@ func (h *EmailHandler) SendMailNow(emailName string, id uint64, recipient string
 	if recipient == "#inline" {
 		recipient, err = dropLine(&html)
 		if err != nil {
-			if requestTorch != nil {
-				requestTorch.DoError(err)
+			if request != nil {
+				request.DoError(err)
 			} else {
 				log.Println(err)
 			}
@@ -147,15 +147,15 @@ func (h *EmailHandler) SendMailNow(emailName string, id uint64, recipient string
 
 	err = h.Sender.Send(&email)
 	if err != nil {
-		if requestTorch != nil {
-			requestTorch.DoError(err)
+		if request != nil {
+			request.DoError(err)
 		} else {
 			log.Println(err)
 		}
 		return
 	}
-	if requestTorch != nil {
-		requestTorch.Write("Email Sent Successfully")
+	if request != nil {
+		request.WriteString("Email Sent Successfully")
 	} else {
 		log.Println("Email Sent Successfully")
 	}

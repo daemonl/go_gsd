@@ -37,7 +37,7 @@ func (r *SelectQuery) HandleRequest(request Request, requestData interface{}) (i
 	}
 
 	db, err := request.DB()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 

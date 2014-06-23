@@ -2,11 +2,11 @@ package core
 
 import (
 	"database/sql"
+	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/databath"
 	"log"
 )
 
@@ -16,10 +16,10 @@ type GSDCore struct {
 	Hooker *Hooker
 	Config *ServerConfig
 	Runner *dynamic.DynamicRunner
-	DB *sql.DB
+	DB     *sql.DB
 }
 
-func (core *GSDCore) OpenDatabaseConnection(session *torch.Session) (*sql.DB, error) {
+func (core *GSDCore) OpenDatabaseConnection(session torch.Session) (*sql.DB, error) {
 	return core.DB, nil
 	//return sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
 }

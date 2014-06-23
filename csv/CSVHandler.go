@@ -4,9 +4,9 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/databath"
 	"github.com/daemonl/databath/types"
+	"github.com/daemonl/go_gsd/torch"
 	"log"
 	"net/url"
 	"strings"
@@ -17,34 +17,34 @@ type CSVHandler struct {
 	Model *databath.Model
 }
 
-func GetCsvHandler( Model *databath.Model) *CSVHandler {
+func GetCsvHandler(Model *databath.Model) *CSVHandler {
 	fh := CSVHandler{
 		Model: Model,
 	}
 	return &fh
 }
 
-func (h *CSVHandler) Handle(requestTorch *torch.Request) {
+func (h *CSVHandler) Handle(request torch.Request) {
 
 	var functionName string
 	var queryStringQuery string
 
-	err := requestTorch.UrlMatch(&functionName, &queryStringQuery)
+	err := request.URLMatch(&functionName, &queryStringQuery)
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 	}
-	w, _ := requestTorch.GetRaw()
+	w, _ := request.GetRaw()
 
 	rawQuery := databath.RawQueryConditions{}
 
 	jsonQuery, err := url.QueryUnescape(queryStringQuery)
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 	err = json.Unmarshal([]byte(jsonQuery), &rawQuery)
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 	var neg1 int64 = -1
@@ -53,33 +53,33 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 
 	qc, err := rawQuery.TranslateToQuery()
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 
-	query, err := databath.GetQuery(requestTorch.GetContext(), h.Model, qc, false)
+	query, err := databath.GetQuery(request.GetContext(), h.Model, qc, false)
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 	sqlString, parameters, err := query.BuildSelect()
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 
-	db, err := requestTorch.DB()
+	db, err := request.DB()
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 
 	rows, err := query.RunQueryWithResults(db, sqlString, parameters)
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 
@@ -96,13 +96,13 @@ func (h *CSVHandler) Handle(requestTorch *torch.Request) {
 
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 	}
 
 	allColNames, err := query.GetColNames()
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 	}
 
 	colNames := make([]string, 0, 0)

@@ -37,7 +37,7 @@ func (lilo *basicLoginLogout) LoadUserById(db *sql.DB, id uint64) (*basicUser, e
 		return nil, errors.New("Could not find a user in the session store")
 	}
 	user := &basicUser{}
-	rows.Scan(&user.IDinternal, &user.Username, &user.password, &user.Access, &user.SetOnNextLogin)
+	rows.Scan(&user.IDinternal, &user.Username, &user.password, &user.AccessInternal, &user.SetOnNextLogin)
 	return user, nil
 }
 
@@ -73,7 +73,7 @@ func (lilo *basicLoginLogout) doLogin(request Request, noPassword bool, username
 	}
 
 	user := basicUser{}
-	err = rows.Scan(&user.IDinternal, &user.Username, &user.password, &user.Access, &user.SetOnNextLogin)
+	err = rows.Scan(&user.IDinternal, &user.Username, &user.password, &user.AccessInternal, &user.SetOnNextLogin)
 	if err != nil {
 		doError("Invalid user identifier", err)
 		return
@@ -127,7 +127,7 @@ func (lilo *basicLoginLogout) HandleSetPassword(r Request) {
 
 	if len(currentPassword) < 1 {
 		// Is user exempt?
-		//if !r.Session.User.SetOnNextLogin {
+		//if !r.Session().User().SetOnNextLogin {
 		//	r.Session.AddFlash("error", "Incorrect current password")
 		//	r.Redirect("/set_password")
 		//	return

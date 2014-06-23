@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/databath"
 	"io"
 )
 
@@ -25,7 +25,7 @@ type TemplateWriter struct {
 	Model       *databath.Model
 	ViewManager *ViewManager
 	Runner      *dynamic.DynamicRunner
-	DB *sql.DB
+	DB          *sql.DB
 }
 
 func (h *TemplateWriter) DoSelect(db *sql.DB, rawQueryConditions *databath.RawQueryConditions, context *databath.MapContext) ([]map[string]interface{}, error) {
@@ -51,7 +51,7 @@ func (h *TemplateWriter) DoSelect(db *sql.DB, rawQueryConditions *databath.RawQu
 
 }
 
-func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templateConfig *TemplateConfig, rootId uint64) error {
+func (h *TemplateWriter) Write(w io.Writer, request torch.Request, templateConfig *TemplateConfig, rootId uint64) error {
 	emailParameters := map[string]interface{}{}
 
 	context := databath.MapContext{
@@ -67,12 +67,12 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 	}
 
 	db := h.DB
-/*	
-	db, err := requestTorch.DB()
-	if err != nil {
-		return err
-	}
-*/
+	/*
+		db, err := request.DB()
+		if err != nil {
+			return err
+		}
+	*/
 	results, err := h.DoSelect(db, &rawQueryCondition, &context)
 	if err != nil {
 		fmt.Println(err)
@@ -101,7 +101,7 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 
 	if len(templateConfig.ScriptName) > 0 {
 		queryMap := map[string]string{}
-		//_, req := requestTorch.GetRaw()
+		//_, req := request.GetRaw()
 		//query := req.URL.Query().Get(key)
 		scriptParameters := map[string]interface{}{
 			"context":      context.Fields,
@@ -124,8 +124,8 @@ func (h *TemplateWriter) Write(w io.Writer, requestTorch *torch.Request, templat
 		Root: h.ViewManager.IncludeRoot,
 	}
 
-	if requestTorch != nil {
-		data.Session = requestTorch.Session
+	if request != nil {
+		data.Session = request.Session()
 	}
 
 	err = h.ViewManager.Render(w, templateConfig.TemplateFile, &data)

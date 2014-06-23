@@ -28,24 +28,24 @@ func GetPdfHandler(binary string, handlerConfig *PdfHandlerConfig, templateWrite
 	return &eh, nil
 }
 
-func (h *PdfHandler) Preview(requestTorch *torch.Request) {
+func (h *PdfHandler) Preview(request torch.Request) {
 	functionName := ""
 	reportName := ""
 	var id uint64
 
-	err := requestTorch.UrlMatch(&functionName, &reportName, &id)
+	err := request.URLMatch(&functionName, &reportName, &id)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	w := requestTorch.GetWriter()
+	w, _ := request.GetRaw()
 	w.Header().Add("content-type", "text/html")
 	reportConfig, ok := h.HandlerConfig.Templates[reportName]
 	if !ok {
 		log.Println("Template not found")
 		return
 	}
-	err = h.TemplateWriter.Write(w, requestTorch, &reportConfig, id)
+	err = h.TemplateWriter.Write(w, request, &reportConfig, id)
 	if err != nil {
 		log.Println(err)
 		return
@@ -53,12 +53,12 @@ func (h *PdfHandler) Preview(requestTorch *torch.Request) {
 
 }
 
-func (h *PdfHandler) GetPdf(requestTorch *torch.Request) {
+func (h *PdfHandler) GetPdf(request torch.Request) {
 	functionName := ""
 	reportName := ""
 	var id uint64
 
-	err := requestTorch.UrlMatch(&functionName, &reportName, &id)
+	err := request.URLMatch(&functionName, &reportName, &id)
 	if err != nil {
 		log.Println(err)
 		return
@@ -69,11 +69,12 @@ func (h *PdfHandler) GetPdf(requestTorch *torch.Request) {
 		log.Println("Template not found")
 		return
 	}
-	err = h.TemplateWriter.Write(&w, requestTorch, &reportConfig, id)
+	err = h.TemplateWriter.Write(&w, request, &reportConfig, id)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	r := bytes.NewReader(w.Bytes())
-	DoPdf(h.Binary, r, requestTorch.GetWriter())
+	//reqW, _ := request.GetRaw()
+	DoPdf(h.Binary, r, request)
 }

@@ -1,18 +1,14 @@
 package torch
 
 import (
+	"database/sql"
 	"github.com/daemonl/databath"
+	"net/http"
 	"time"
 )
 
-type ActionCore interface {
-	GetSession() *Session
-	Broadcast(functionName string, object interface{})
-}
-
-type Handler interface {
-	GetRequestObject() interface{}
-	HandleRequest(ac ActionCore, requestObject interface{}) (interface{}, error)
+type LoginLogout interface {
+	ForceLogin(request Request, email string)
 }
 
 type SessionStore interface {
@@ -24,6 +20,7 @@ type User interface {
 	GetContext() databath.Context
 	CheckPassword(string) (bool, error)
 	ID() uint64
+	Access() uint64
 }
 
 type Session interface {
@@ -48,6 +45,19 @@ type Request interface {
 	ResetSession() error
 	Method() string
 	Redirect(to string)
+	DB() (*sql.DB, error)
+	GetContext() databath.Context
+	URLMatch(dest ...interface{}) error
+	DoError(err error)
+	DoErrorf(format string, parameters ...interface{})
 
+	GetRaw() (http.ResponseWriter, *http.Request)
+
+	WriteString(content string)
+	Writef(format string, params ...interface{})
 	PostValueString(name string) string
+
+	Broadcast(name string, val interface{})
+
+	Write(bytes []byte) (int, error)
 }

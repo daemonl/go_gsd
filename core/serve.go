@@ -28,18 +28,18 @@ import (
 
 var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
 
-func checkHandle(requestTorch *torch.Request) {
-	requestTorch.Writef("Session Key: %s\n\n", *requestTorch.Session.Key)
-	if requestTorch.Session.User != nil {
-		requestTorch.Writef("Username: %s", requestTorch.Session.User.Username)
+func checkHandle(request torch.Request) {
+	request.Writef("Session Key: %s\n\n", *request.Session.Key)
+	if request.Session.User != nil {
+		request.Writef("Username: %s", request.Session().User().Username)
 	}
 }
 
-func signupHandle(requestTorch *torch.Request) {
-	//username := requestTorch.PostValueString("username")
-	password := requestTorch.PostValueString("password")
+func signupHandle(request torch.Request) {
+	//username := request.PostValueString("username")
+	password := request.PostValueString("password")
 	hashStore := torch.HashPassword(password)
-	requestTorch.Write(hashStore)
+	request.Write(hashStore)
 }
 
 func Sync(config *ServerConfig, force bool) error {
@@ -130,7 +130,7 @@ func Serve(config *ServerConfig) error {
 			socketManager.RegisterHandler(funcName, handler)
 
 			// Wrap the action in a torch request
-			rFunc := func(request *torch.Request) {
+			rFunc := func(request torch.Request) {
 
 				requestData := handler.RequestDataPlaceholder()
 				writer, r := request.GetRaw()
@@ -168,7 +168,7 @@ func Serve(config *ServerConfig) error {
 		Model:       model,
 		ViewManager: config.ViewManager,
 		Runner:      core.Runner,
-		DB: db,
+		DB:          db,
 	}
 
 	loginViewHandler := view.ViewHandler{

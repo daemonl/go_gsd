@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/daemonl/databath"
 	"log"
 	"net/http"
 	"strconv"
@@ -47,11 +48,22 @@ func (r *basicRequest) GetWriter() http.ResponseWriter {
 	return r.writer
 }
 
+func (r *basicRequest) GetContext() databath.Context {
+	if r.session == nil {
+		return nil
+	}
+	u := r.session.User()
+	if u == nil {
+		return nil
+	}
+	return u.GetContext()
+}
+
 func (r *basicRequest) GetRaw() (http.ResponseWriter, *http.Request) {
 	return r.writer, r.raw
 }
 
-func (r *basicRequest) UrlMatch(dest ...interface{}) error {
+func (r *basicRequest) URLMatch(dest ...interface{}) error {
 	urlParts := strings.Split(r.raw.URL.Path[1:], "/")
 	if len(urlParts) != len(dest) {
 		fmt.Println(urlParts)
@@ -85,7 +97,7 @@ func (r *basicRequest) DoError(err error) {
 func (r *basicRequest) DoErrorf(format string, parameters ...interface{}) {
 	str := fmt.Sprintf(format, parameters...)
 	log.Println(str)
-	r.Write(str)
+	r.WriteString(str)
 }
 
 func (r *basicRequest) Broadcast(name string, val interface{}) {
@@ -96,12 +108,16 @@ func (request *basicRequest) End() {
 
 }
 
-func (request *basicRequest) Write(content string) {
+func (request *basicRequest) Write(bytes []byte) (int, error) {
+	return request.writer.Write(bytes)
+}
+
+func (request *basicRequest) WriteString(content string) {
 	request.writer.Write([]byte(content))
 }
 
 func (request *basicRequest) Writef(format string, params ...interface{}) {
-	request.Write(fmt.Sprintf(format, params...))
+	request.WriteString(fmt.Sprintf(format, params...))
 }
 
 func (request *basicRequest) PostValueString(name string) string {

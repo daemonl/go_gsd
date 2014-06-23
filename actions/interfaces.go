@@ -8,9 +8,10 @@ import (
 )
 
 type Request interface {
-	GetSession() *torch.Session
+	Session() torch.Session
 	Broadcast(functionName string, object interface{})
 	GetContext() databath.Context
+	//URLMatch(dest ...interface{}) error
 	DB() (*sql.DB, error)
 }
 

@@ -18,9 +18,9 @@ var nextUID uint = 0
 type Manager struct {
 	handlers         map[string]Handler
 	websocketHandler websocket.Handler
-	sessionStore     *torch.SessionStore
+	sessionStore     torch.SessionStore
 	OpenSockets      []*OpenSocket
-	GetDatabase      func(*torch.Session) (*sql.DB, error)
+	GetDatabase      func(torch.Session) (*sql.DB, error)
 }
 
 type SocketMessage interface {
@@ -52,7 +52,7 @@ type Handler interface {
 	HandleRequest(ac actions.Request, requestObject interface{}) (interface{}, error)
 }
 
-func GetManager(sessionStore *torch.SessionStore) *Manager {
+func GetManager(sessionStore torch.SessionStore) *Manager {
 	m := Manager{
 		handlers:     make(map[string]Handler),
 		sessionStore: sessionStore,
@@ -109,7 +109,7 @@ func (m *Manager) listener(ws *websocket.Conn) {
 	}
 
 	os := OpenSocket{
-		Session: session,
+		session: session,
 		ws:      ws,
 		Sender:  make(chan SocketMessage, 5),
 		Closer:  make(chan bool),
@@ -131,7 +131,7 @@ func (m *Manager) listener(ws *websocket.Conn) {
 	}
 	os.Sender <- &whoAmI
 
-	log.Printf("S:%d OPEN for user %d: %s [%d]\n", os.UID, session.User.Id, session.User.Username, session.User.Access)
+	log.Printf("S:%d OPEN for user %d\n", os.UID, session.UserID())
 
 	r := bufio.NewReader(ws)
 	for {
@@ -141,7 +141,7 @@ func (m *Manager) listener(ws *websocket.Conn) {
 			return
 		}
 		log.Printf("S:%d IN: %s", os.UID, line)
-		os.Session.LastRequest = time.Now()
+		os.session.UpdateLastRequest()
 		m.parse(line, &os)
 	}
 }

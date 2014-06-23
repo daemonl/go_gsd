@@ -4,13 +4,13 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"database/sql"
 	"encoding/json"
-	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/torch"
 	"log"
 )
 
 type OpenSocket struct {
-	Session *torch.Session
+	session torch.Session
 	ws      *websocket.Conn
 	Sender  chan SocketMessage
 	Closer  chan bool
@@ -24,7 +24,7 @@ type socketError struct {
 }
 
 func (os *OpenSocket) DB() (*sql.DB, error) {
-	return os.Manager.GetDatabase(os.Session)
+	return os.Manager.GetDatabase(os.session)
 }
 
 func (os *OpenSocket) Close() {
@@ -86,8 +86,8 @@ func (os *OpenSocket) SendError(responseId string, err error) {
 	log.Printf("S:%d SEND ERROR %s\n", os.UID, responseId)
 	os.Sender <- &m
 }
-func (os *OpenSocket) GetSession() *torch.Session {
-	return os.Session
+func (os *OpenSocket) Session() torch.Session {
+	return os.session
 }
 func (os *OpenSocket) Broadcast(functionName string, object interface{}) {
 	os.Manager.Broadcast(functionName, object)
@@ -96,10 +96,10 @@ func (os *OpenSocket) Broadcast(functionName string, object interface{}) {
 func (os *OpenSocket) GetContext() databath.Context {
 	context := &databath.MapContext{
 		IsApplication:   false,
-		UserAccessLevel: os.Session.User.Access,
+		UserAccessLevel: os.session.User().Access(),
 		Fields:          make(map[string]interface{}),
 	}
-	context.Fields["#me"] = os.Session.User.Id
-	context.Fields["#user"] = os.Session.User.Id
+	context.Fields["#me"] = *os.session.UserID()
+	context.Fields["#user"] = *os.session.UserID()
 	return context
 }

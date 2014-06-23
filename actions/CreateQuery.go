@@ -31,7 +31,7 @@ func (r *CreateQuery) HandleRequest(request Request, requestObject interface{}) 
 		return nil, ErrF("Request Type Mismatch")
 	}
 
-	session := request.GetSession()
+	session := request.Session()
 
 	db, err := request.DB()
 	if err != nil {
@@ -48,7 +48,7 @@ func (r *CreateQuery) HandleRequest(request Request, requestObject interface{}) 
 	}
 
 	actionSummary := &shared_structs.ActionSummary{
-		UserId:     session.User.Id,
+		UserId:     *session.UserID(),
 		Action:     "create",
 		Collection: createRequest.Collection,
 		Pk:         0,

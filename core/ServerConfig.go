@@ -42,13 +42,13 @@ type ServerConfig struct {
 	ViewManager *view.ViewManager
 }
 
-func (config *ServerConfig) ReloadHandle(requestTorch *torch.Request) {
+func (config *ServerConfig) ReloadHandle(request torch.Request) {
 	err := config.ViewManager.Reload()
 	if err != nil {
-		requestTorch.Writef("Error Loading Views: %s", err.Error())
+		request.Writef("Error Loading Views: %s", err.Error())
 		return
 	}
-	requestTorch.Writef("Loaded Views")
+	request.Writef("Loaded Views")
 }
 
 func (config *ServerConfig) GetCore() (core *GSDCore, err error) {

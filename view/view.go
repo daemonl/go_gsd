@@ -92,22 +92,23 @@ type ViewHandler struct {
 }
 
 type ViewData struct {
-	Session *torch.Session
+	Session torch.Session
 	Data    interface{}
 	D       map[string]interface{}
 	Root    string
 }
 
-func (vh *ViewHandler) Handle(r *torch.Request) {
+func (vh *ViewHandler) Handle(r torch.Request) {
 	d := ViewData{
-		Session: r.Session,
+		Session: r.Session(),
 		Data:    vh.Data,
 		D:       vh.JsData,
 		Root:    vh.Manager.IncludeRoot,
 	}
-	err := vh.Manager.Render(r.GetWriter(), vh.TemplateName, &d)
+	w, _ := r.GetRaw()
+	err := vh.Manager.Render(w, vh.TemplateName, &d)
 	if err != nil {
 		log.Println(err.Error())
 	}
-	r.Session.ResetFlash()
+	//r.Session.ResetFlash()
 }

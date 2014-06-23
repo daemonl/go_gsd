@@ -26,41 +26,41 @@ func (parser *Parser) Wrap(handler func(Request)) func(w http.ResponseWriter, r 
 		log.Println(string(d))
 		defer log.Printf("End Request\n")
 
-		requestTorch, err := parser.parseRequest(w, r)
+		request, err := parser.parseRequest(w, r)
 		if err != nil {
 			log.Fatal(err)
 			w.Write([]byte("An error occurred"))
 			return
 		}
-		defer requestTorch.Cleanup()
+		defer request.Cleanup()
 
 		/*
-			db, err := parser.OpenDatabaseConnection(requestTorch.Session)
+			db, err := parser.OpenDatabaseConnection(request.Session)
 			if err != nil {
 				log.Fatal(err)
 				w.Write([]byte("An error occurred"))
 				return
 			}
-			requestTorch.db = db
-			//defer requestTorch.db.Close()
+			request.db = db
+			//defer request.db.Close()
 		*/
 
-		if !requestTorch.IsLoggedIn() {
+		if !request.IsLoggedIn() {
 			log.Printf("PUBLIC: Check Path %s", r.URL.Path)
 			for _, p := range parser.PublicPatterns {
 				log.Println(p.String())
 				if p.MatchString(r.URL.Path) {
 					log.Printf("PUBLIC: Matched Public Path %s", p.String())
-					handler(requestTorch)
+					handler(request)
 					return
 				}
 			}
 
 			log.Println("PUBLIC: No Public Pathes Matched")
 
-			requestTorch.Redirect("/login")
+			request.Redirect("/login")
 		} else {
-			handler(requestTorch)
+			handler(request)
 		}
 		return
 	}

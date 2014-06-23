@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/torch"
 	"io"
 	"log"
 	"mime/multipart"
@@ -24,29 +24,29 @@ func GetFileHandler(location string, Model *databath.Model) *FileHandler {
 	}
 	return &fh
 }
-func (h *FileHandler) Upload(requestTorch *torch.Request) {
+func (h *FileHandler) Upload(request torch.Request) {
 
 	var functionName string
 	var fileCollection string
 	var collectionRef string
 	var collectionId uint64
 
-	err := requestTorch.UrlMatch(&functionName, &fileCollection, &collectionRef, &collectionId)
+	err := request.URLMatch(&functionName, &fileCollection, &collectionRef, &collectionId)
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		log.Println(err)
 		return
 	}
 
-	_, r := requestTorch.GetRaw()
+	_, r := request.GetRaw()
 	if r.Method != "POST" && r.Method != "PUT" {
-		requestTorch.Write("Must post a file (1)")
+		request.WriteString("Must post a file (1)")
 		return
 	}
 
 	mpr, err := r.MultipartReader()
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		log.Println(err)
 		return
 	}
@@ -63,7 +63,7 @@ func (h *FileHandler) Upload(requestTorch *torch.Request) {
 		}
 	}
 	if part == nil {
-		requestTorch.Write("Must post a file (2)")
+		request.WriteString("Must post a file (2)")
 		return
 	}
 
@@ -101,14 +101,14 @@ func (h *FileHandler) Upload(requestTorch *torch.Request) {
 		"filename":    origName,
 	}
 
-	err = h.writeDatabaseEntry(requestTorch, dbEntry, fileCollection)
+	err = h.writeDatabaseEntry(request, dbEntry, fileCollection)
 	if err != nil {
 		log.Println(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 
-	requestTorch.Write(`
+	request.WriteString(`
 		<script type='text/javascript'>
 		window.top.file_done()
 		</script>
@@ -116,22 +116,22 @@ func (h *FileHandler) Upload(requestTorch *torch.Request) {
 	`)
 
 }
-func (h *FileHandler) Download(requestTorch *torch.Request) {
+func (h *FileHandler) Download(request torch.Request) {
 
 	var functionName string
 	var fileCollection string
 	var fileId uint64
 
-	err := requestTorch.UrlMatch(&functionName, &fileCollection, &fileId)
+	err := request.URLMatch(&functionName, &fileCollection, &fileId)
 	if err != nil {
-		requestTorch.DoError(err)
+		request.DoError(err)
 		log.Println(err)
 		return
 	}
 
-	_, r := requestTorch.GetRaw()
+	_, r := request.GetRaw()
 	if r.Method != "GET" {
-		requestTorch.Write("Must get")
+		request.WriteString("Must get")
 		return
 	}
 
@@ -141,30 +141,29 @@ func (h *FileHandler) Download(requestTorch *torch.Request) {
 	}
 	qc, _ := rqueryConditions.TranslateToQuery()
 
-	query, err := databath.GetQuery(requestTorch.GetContext(), h.Model, qc, false)
+	query, err := databath.GetQuery(request.GetContext(), h.Model, qc, false)
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 	sqlString, parameters, err := query.BuildSelect()
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 
-	db, err := requestTorch.DB()
-	if err != nil{
-		requestTorch.DoError(err)
+	db, err := request.DB()
+	if err != nil {
+		request.DoError(err)
 		return
 	}
-
 
 	row, err := query.RunQueryWithSingleResult(db, sqlString, parameters)
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 	fn, ok := row["file"].(string)
@@ -180,26 +179,26 @@ func (h *FileHandler) Download(requestTorch *torch.Request) {
 	file, err := os.Open(h.Location + fn)
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 	defer file.Close()
-	w := requestTorch.GetWriter()
+	w, _ := request.GetRaw()
 	w.Header().Add("content-disposition", "attachment; filename="+origName)
 
 	_, err = io.Copy(w, file)
 	if err != nil {
 		log.Print(err)
-		requestTorch.DoError(err)
+		request.DoError(err)
 		return
 	}
 }
 
-func (h *FileHandler) writeDatabaseEntry(requestTorch *torch.Request, dbEntry map[string]interface{}, fileCollection string) error {
+func (h *FileHandler) writeDatabaseEntry(request torch.Request, dbEntry map[string]interface{}, fileCollection string) error {
 
 	qc := databath.GetMinimalQueryConditions(fileCollection, "form")
 
-	q, err := databath.GetQuery(requestTorch.GetContext(), h.Model, qc, true)
+	q, err := databath.GetQuery(request.GetContext(), h.Model, qc, true)
 	if err != nil {
 		return err
 	}
@@ -208,7 +207,7 @@ func (h *FileHandler) writeDatabaseEntry(requestTorch *torch.Request, dbEntry ma
 		return err
 	}
 
-	db, err := requestTorch.DB()
+	db, err := request.DB()
 	if err != nil {
 		return err
 	}
@@ -224,7 +223,7 @@ func (h *FileHandler) writeDatabaseEntry(requestTorch *torch.Request, dbEntry ma
 	pk, _ := res.LastInsertId()
 	/*
 		actionSummary := &shared_structs.ActionSummary{
-			UserId:     requestTorch.Session.User.Id,
+			UserId:     request.Session().User().Id,
 			Action:     "create",
 			Collection: fileCollection,
 			Pk:         uint64(pk),
@@ -237,7 +236,7 @@ func (h *FileHandler) writeDatabaseEntry(requestTorch *torch.Request, dbEntry ma
 		"object":     dbEntry,
 	}
 
-	requestTorch.Broadcast("create", createObject)
+	request.Broadcast("create", createObject)
 
 	return nil
 }

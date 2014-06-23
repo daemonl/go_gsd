@@ -29,7 +29,7 @@ func (r *UpdateQuery) HandleRequest(request Request, requestData interface{}) (i
 		return nil, err
 	}
 
-	session := request.GetSession()
+	session := request.Session()
 	model := r.Core.GetModel()
 	db, err := request.DB()
 	if err != nil {
@@ -42,7 +42,7 @@ func (r *UpdateQuery) HandleRequest(request Request, requestData interface{}) (i
 	}
 	if updateRequest.Conditions.Pk != nil {
 		actionSummary := &shared_structs.ActionSummary{
-			UserId:     session.User.Id,
+			UserId:     *session.UserID(),
 			Action:     "update",
 			Collection: *updateRequest.Conditions.Collection,
 			Pk:         *updateRequest.Conditions.Pk,
@@ -69,7 +69,7 @@ func (r *UpdateQuery) HandleRequest(request Request, requestData interface{}) (i
 	go request.Broadcast("update", updateObject)
 	if updateRequest.Conditions.Pk != nil {
 		actionSummary := &shared_structs.ActionSummary{
-			UserId:     session.User.Id,
+			UserId:     *session.UserID(),
 			Action:     "update",
 			Collection: *updateRequest.Conditions.Collection,
 			Pk:         *updateRequest.Conditions.Pk,

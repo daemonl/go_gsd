@@ -3,8 +3,8 @@ package actions
 import (
 	"encoding/json"
 	"github.com/daemonl/go_gsd/router"
-	"github.com/daemonl/go_gsd/torch"
 	"io"
+	"net/http"
 )
 
 type JSONResponse struct {
@@ -27,6 +27,8 @@ func (j *JSONResponse) ContentType() string {
 	return "application/json"
 }
 
+func (j *JSONResponse) HTTPExtra(w http.ResponseWriter) {}
+
 type wrappedHandler struct {
 	handler Handler
 }
@@ -37,7 +39,7 @@ func AsRouterHandler(h Handler) router.Handler {
 	}
 }
 
-func (wh *wrappedHandler) Handle(request torch.Request) (router.Response, error) {
+func (wh *wrappedHandler) Handle(request router.Request) (router.Response, error) {
 
 	requestData := wh.handler.RequestDataPlaceholder()
 	_, r := request.GetRaw()

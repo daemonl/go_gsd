@@ -2,17 +2,10 @@ package view
 
 import (
 	"database/sql"
-	"errors"
-	"fmt"
+
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/dynamic"
-	"github.com/daemonl/go_gsd/torch"
-	"io"
 )
-
-func errorf(format string, parameters ...interface{}) error {
-	return errors.New(fmt.Sprintf(format, parameters...))
-}
 
 type TemplateConfig struct {
 	TemplateFile string                                  `json:"templateFile"`
@@ -51,87 +44,11 @@ func (h *TemplateWriter) DoSelect(db *sql.DB, rawQueryConditions *databath.RawQu
 
 }
 
-func (h *TemplateWriter) Write(w io.Writer, request torch.Request, templateConfig *TemplateConfig, rootId uint64) error {
-	emailParameters := map[string]interface{}{}
-
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-	context.Fields["id"] = rootId
-
-	fieldset := "email"
-	rawQueryCondition := databath.RawQueryConditions{
-		Collection: &templateConfig.Collection,
-		Pk:         &rootId,
-		Fieldset:   &fieldset,
+/*
+	r := &Report{
+		Session: session,
+		Config:  templateConfig,
+		RootID:  rootId,
 	}
 
-	db := h.DB
-	/*
-		db, err := request.DB()
-		if err != nil {
-			return err
-		}
-	*/
-	results, err := h.DoSelect(db, &rawQueryCondition, &context)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
-	if len(results) < 1 {
-		return errorf("No results found for core object")
-	}
-
-	emailParameters[templateConfig.Collection] = results[0]
-	for k, v := range results[0] {
-		context.Fields["main."+k] = v
-	}
-
-	for key, qc := range templateConfig.Queries {
-		results2, err := h.DoSelect(db, qc, &context)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		emailParameters[key] = results2
-	}
-
-	javascriptData := map[string]interface{}{}
-
-	if len(templateConfig.ScriptName) > 0 {
-		queryMap := map[string]string{}
-		//_, req := request.GetRaw()
-		//query := req.URL.Query().Get(key)
-		scriptParameters := map[string]interface{}{
-			"context":      context.Fields,
-			"id":           rootId,
-			"fieldset":     fieldset,
-			"requestQuery": queryMap,
-			"queries":      emailParameters,
-		}
-		javascriptData, err = h.Runner.Run(templateConfig.ScriptName, scriptParameters, db)
-
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-	}
-
-	data := ViewData{
-		Data: emailParameters,
-		D:    javascriptData,
-		Root: h.ViewManager.IncludeRoot,
-	}
-
-	if request != nil {
-		data.Session = request.Session()
-	}
-
-	err = h.ViewManager.Render(w, templateConfig.TemplateFile, &data)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	return nil
-}
+*/

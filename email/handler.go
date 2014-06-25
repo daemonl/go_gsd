@@ -3,7 +3,9 @@ package email
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
 	"log"
@@ -44,49 +46,75 @@ func GetEmailHandler(smtpConfig *SmtpConfig, handlerConfig *EmailHandlerConfig, 
 	return &eh, nil
 }
 
-func (h *EmailHandler) Preview(request torch.Request) {
-	functionName := ""
-	emailName := ""
-	var id uint64
+func (h *EmailHandler) GetReport(reportName string, rootID uint64, session torch.Session) (*view.Report, error) {
 
-	err := request.URLMatch(&functionName, &emailName, &id)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	w, _ := request.GetRaw()
-	w.Header().Add("content-type", "text/html")
-	emailConfig, ok := h.HandlerConfig.Templates[emailName]
+	reportConfig, ok := h.HandlerConfig.Templates[reportName]
 	if !ok {
-		log.Println("Template not found")
-		return
-	}
-	err = h.TemplateWriter.Write(w, request, &emailConfig, id)
-	if err != nil {
-		log.Println(err)
-		return
+		return nil, fmt.Errorf("Report %s not found", reportName)
 	}
 
+	r := &view.Report{
+		Session: session,
+		Config:  &reportConfig,
+		RootID:  rootID,
+	}
+
+	return r, nil
 }
 
-func (h *EmailHandler) Send(request torch.Request) {
-	functionName := ""
+func (h *EmailHandler) Preview(request router.Request) (router.Response, error) {
+
+	reportName := ""
+	var id uint64
+
+	err := request.ScanPath(&reportName, &id)
+	if err != nil {
+		return nil, err
+	}
+
+	report, err := h.GetReport(reportName, id, request.Session())
+	if err != nil {
+		return nil, err
+	}
+
+	viewData, err := report.PrepareData()
+	if err != nil {
+		return nil, err
+	}
+
+	return viewData, nil
+}
+
+func (h *EmailHandler) Send(request router.Request) (router.Response, error) {
+
 	emailName := ""
 	var id uint64
 	recipientRaw := ""
 	notes := ""
 
-	err := request.URLMatch(&functionName, &emailName, &id, &recipientRaw, &notes)
+	err := request.ScanPath(&emailName, &id, &recipientRaw, &notes)
 	if err != nil {
-		request.DoError(err)
-		return
+		return nil, err
+	}
+
+	report, err := h.GetReport(emailName, id, request.Session())
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := report.PrepareData()
+	if err != nil {
+		return nil, err
 	}
 
 	recipients := strings.Split(recipientRaw, ";")
 	for _, recipient := range recipients {
-		h.SendMailNow(emailName, id, strings.TrimSpace(recipient), notes, request)
+		err := h.SendMailNow(data, strings.TrimSpace(recipient), notes)
+		if err != nil {
+			return nil, err
+		}
 	}
-
+	return nil, nil
 }
 
 func dropLine(in *string) (string, error) {
@@ -100,38 +128,25 @@ func dropLine(in *string) (string, error) {
 
 	return parts[0], nil
 }
-func (h *EmailHandler) SendMailNow(emailName string, id uint64, recipient string, notes string, request torch.Request) {
-	w := bytes.Buffer{}
-	emailConfig, ok := h.HandlerConfig.Templates[emailName]
-	if !ok {
-		request.DoErrorf("Template %s not found", emailName)
-		return
-	}
-	err := h.TemplateWriter.Write(&w, request, &emailConfig, id)
+
+func (h *EmailHandler) SendMailNow(data *view.ViewData, recipient string, notes string) error {
+
+	w := &bytes.Buffer{}
+
+	err := data.WriteTo(w)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	html := w.String()
 	subject, err := dropLine(&html)
 	if err != nil {
-		if request != nil {
-			request.DoError(err)
-		} else {
-			log.Println(err)
-		}
-		return
+		return err
 	}
 
 	if recipient == "#inline" {
 		recipient, err = dropLine(&html)
 		if err != nil {
-			if request != nil {
-				request.DoError(err)
-			} else {
-				log.Println(err)
-			}
-			return
+			return err
 		}
 	}
 
@@ -147,17 +162,7 @@ func (h *EmailHandler) SendMailNow(emailName string, id uint64, recipient string
 
 	err = h.Sender.Send(&email)
 	if err != nil {
-		if request != nil {
-			request.DoError(err)
-		} else {
-			log.Println(err)
-		}
-		return
+		return err
 	}
-	if request != nil {
-		request.WriteString("Email Sent Successfully")
-	} else {
-		log.Println("Email Sent Successfully")
-	}
-
+	return nil
 }

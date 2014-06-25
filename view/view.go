@@ -1,6 +1,7 @@
 package view
 
 import (
+	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_sweetpl"
 	"github.com/russross/blackfriday"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"log"
 
+	"net/http"
 	"strings"
 )
 
@@ -92,27 +94,41 @@ type ViewHandler struct {
 }
 
 type ViewData struct {
-	Session torch.Session
-	Data    interface{}
-	D       map[string]interface{}
-	Root    string
+	Session      torch.Session
+	Data         interface{}
+	D            map[string]interface{}
+	Root         string
+	TemplateName string
+	Manager      *ViewManager
 }
 
-func (vh *ViewHandler) Handle(r torch.Request) {
+func (vh *ViewHandler) Handle(r torch.Request) (router.Response, error) {
 	session := r.Session()
 	if session == nil {
 		panic("NILL SESSION")
 	}
 	d := ViewData{
-		Session: session,
-		Data:    vh.Data,
-		D:       vh.JsData,
-		Root:    vh.Manager.IncludeRoot,
+		Session:      session,
+		Data:         vh.Data,
+		D:            vh.JsData,
+		Root:         vh.Manager.IncludeRoot,
+		TemplateName: vh.TemplateName,
+		Manager:      vh.Manager,
 	}
-	w, _ := r.GetRaw()
-	err := vh.Manager.Render(w, vh.TemplateName, &d)
+
+	return &d, nil
+}
+
+func (vd *ViewData) ContentType() string {
+	return "text/html"
+}
+
+func (vd *ViewData) WriteTo(w io.Writer) error {
+	err := vd.Manager.Render(w, vd.TemplateName, vd)
 	if err != nil {
 		log.Println(err.Error())
 	}
-	//r.Session.ResetFlash()
+	return err
 }
+
+func (vd *ViewData) HTTPExtra(w http.ResponseWriter) {}

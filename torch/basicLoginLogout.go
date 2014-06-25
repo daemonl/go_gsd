@@ -17,17 +17,18 @@ func GetBasicLoginLogout(db *sql.DB) LoginLogout {
 	return lilo
 }
 
-func (lilo *basicLoginLogout) HandleLogout(request Request) {
+func (lilo *basicLoginLogout) HandleLogout(request Request) (Response, error) {
 	//request.Session.User = nil
 	request.ResetSession()
 	request.Session().AddFlash("success", "Logged Out")
-	request.Redirect("/")
+	return getRedirectResponse("/")
 }
 
-func (lilo *basicLoginLogout) HandleLogin(request Request) {
+func (lilo *basicLoginLogout) HandleLogin(request Request) (Response, error) {
 	username := request.PostValueString("username")
 	password := request.PostValueString("password")
 	lilo.doLogin(request, false, username, password)
+	return nil, nil
 }
 
 func (lilo *basicLoginLogout) ForceLogin(request Request, email string) {
@@ -118,11 +119,12 @@ func (lilo *basicLoginLogout) doLogin(request Request, noPassword bool, username
 	log.Printf("Done Check Password")
 }
 
-func (lilo *basicLoginLogout) HandleSetPassword(r Request) {
-	doErr := func(err error) {
+func (lilo *basicLoginLogout) HandleSetPassword(r Request) (Response, error) {
+	doErr := func(err error) (Response, error) {
 		log.Println(err)
 		r.Session().AddFlash("error", "Something went wrong...")
-		r.Redirect("/set_password")
+		return getRedirectResponse("/set_password")
+
 	}
 	currentPassword := r.PostValueString("current_password")
 	newPassword1 := r.PostValueString("new_password_1")
@@ -130,8 +132,7 @@ func (lilo *basicLoginLogout) HandleSetPassword(r Request) {
 
 	if newPassword1 != newPassword2 {
 		r.Session().AddFlash("error", "Passwords didn't match")
-		r.Redirect("/set_password")
-		return
+		return getRedirectResponse("/set_password")
 	}
 
 	if len(currentPassword) < 1 {
@@ -145,13 +146,11 @@ func (lilo *basicLoginLogout) HandleSetPassword(r Request) {
 		//Check Current Password
 		matches, err := r.Session().User().CheckPassword(currentPassword)
 		if err != nil {
-			doErr(err)
-			return
+			return doErr(err)
 		}
 		if !matches {
 			r.Session().AddFlash("error", "Incorrect current password")
-			r.Redirect("/set_password")
-			return
+			return getRedirectResponse("/set_password")
 		}
 	}
 
@@ -159,8 +158,8 @@ func (lilo *basicLoginLogout) HandleSetPassword(r Request) {
 	// TODO:... something useful.
 	if len(newPassword1) < 5 {
 		r.Session().AddFlash("error", "Password must be at least 5 characters long")
-		r.Redirect("/set_password")
-		return
+
+		return getRedirectResponse("/set_password")
 	}
 
 	hashed := HashPassword(newPassword1)
@@ -168,8 +167,8 @@ func (lilo *basicLoginLogout) HandleSetPassword(r Request) {
 	db := lilo.db
 	_, err := db.Exec(`UPDATE staff SET password = ?, set_on_next_login = 0 WHERE id = ?`, hashed, r.Session().UserID())
 	if err != nil {
-		doErr(err)
-		return
+		return doErr(err)
 	}
-	r.Redirect("/app.html")
+	return getRedirectResponse("/app.html")
+
 }

@@ -123,7 +123,22 @@ func (h *Hooker) DoPostHooks(db *sql.DB, as *shared_structs.ActionSummary) {
 
 			// WOOT, Hook Matches. Let's Do this shit.
 			log.Println("Send Email " + hook.Email.Template + " TO " + hook.Email.Recipient)
-			go h.Core.Email.SendMailNow(hook.Email.Template, as.Pk, hook.Email.Recipient, "", nil)
+
+			//hook.Email.Template, as.Pk,
+			//viewData :=
+			report, err := h.Core.Email.GetReport(hook.Email.Template, as.Pk, nil)
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
+
+			viewData, err := report.PrepareData()
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
+
+			go h.Core.Email.SendMailNow(viewData, hook.Email.Recipient, "")
 
 		}
 	}

@@ -2,6 +2,7 @@ package torch
 
 import (
 	"database/sql"
+	"io"
 	"net/http"
 	"time"
 )
@@ -9,9 +10,9 @@ import (
 type LoginLogout interface {
 	ForceLogin(request Request, email string)
 	LoadUserById(id uint64) (User, error)
-	HandleLogin(Request)
-	HandleLogout(Request)
-	HandleSetPassword(Request)
+	HandleLogin(Request) (Response, error)
+	HandleLogout(Request) (Response, error)
+	HandleSetPassword(Request) (Response, error)
 }
 
 type SessionStore interface {
@@ -71,4 +72,10 @@ type Request interface {
 	Write(bytes []byte) (int, error)
 
 	Logf(string, ...interface{})
+}
+
+type Response interface {
+	WriteTo(w io.Writer) error
+	ContentType() string
+	HTTPExtra(http.ResponseWriter)
 }

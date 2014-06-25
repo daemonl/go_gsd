@@ -105,11 +105,14 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 	req.Logf("User Agent: %s", httpRequest.UserAgent())
 	defer req.Logf("End")
 
-	res, err := path.handler.Handle(req)
+	res, err := path.handler.Handle(wrapRequest(req, path))
 	if err != nil {
 		req.Logf("ERROR: %s", err.Error())
 		respWriter.WriteHeader(500)
 		respWriter.Write([]byte(`INTERNAL SERVER ERROR`))
+		return
+	}
+	if res == nil {
 		return
 	}
 

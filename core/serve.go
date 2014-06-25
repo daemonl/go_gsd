@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
-	"strings"
 
 	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_gsd/actions"
@@ -75,7 +74,6 @@ func Serve(config *ServerConfig) error {
 	}
 
 	// Register the AJAX and Socket methods (These methods work on both)
-
 	handlerMap := map[string]actions.Handler{
 		"get":     &actions.SelectQuery{Core: core},
 		"set":     &actions.UpdateQuery{Core: core},
@@ -87,15 +85,12 @@ func Serve(config *ServerConfig) error {
 	}
 
 	socketManager := socket.GetManager(parser.Store)
-	routerCore := router.GetRouter(parser)
+	routes := router.GetRouter(parser)
 
 	for funcName, handler := range handlerMap {
 		func(funcName string, handler actions.Handler) {
-			// Register handler with the Socket Manager
 			socketManager.RegisterHandler(funcName, handler)
-
-			routerCore.AddRoute("/ajax/"+funcName, actions.AsRouterHandler(handler), "POST")
-
+			routes.AddRoute("/ajax/"+funcName, actions.AsRouterHandler(handler), "POST")
 		}(funcName, handler)
 	}
 
@@ -103,38 +98,32 @@ func Serve(config *ServerConfig) error {
 
 	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
 
-	templateWriter := view.TemplateWriter{
+	templateWriter := &view.TemplateWriter{
 		Model:       model,
 		ViewManager: config.ViewManager,
 		Runner:      core.Runner,
 		DB:          core.DB,
 	}
 
-	loginViewHandler := view.ViewHandler{
+	loginViewHandler := &view.ViewHandler{
 		Manager:      config.ViewManager,
 		TemplateName: "login.html",
 		Data:         nil,
 	}
 
-	signupViewHandler := view.ViewHandler{
-		Manager:      config.ViewManager,
-		TemplateName: "signup.html",
-		Data:         nil,
-	}
-
-	setPasswordViewHandler := view.ViewHandler{
+	setPasswordViewHandler := &view.ViewHandler{
 		Manager:      config.ViewManager,
 		TemplateName: "set_password.html",
 		Data:         nil,
 	}
 
-	emailHandler, err := email.GetEmailHandler(config.SmtpConfig, config.EmailConfig, &templateWriter)
+	emailHandler, err := email.GetEmailHandler(config.SmtpConfig, config.EmailConfig, templateWriter)
 	if err != nil {
 		log.Panic(err)
 	}
 	core.Email = emailHandler
 
-	pdfHandler, err := pdf.GetPdfHandler(*config.PdfBinary, config.PdfConfig, &templateWriter)
+	pdfHandler, err := pdf.GetPDFHandler(*config.PdfBinary, config.PdfConfig, templateWriter)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -151,56 +140,29 @@ func Serve(config *ServerConfig) error {
 
 	fallthroughHandler := GetFallthroughHandler(config)
 
-	runScript := func(w http.ResponseWriter, r *http.Request) {
-		// This should only run for requests internal to the system, for cronjobs and scripts.
-		// Nginx sets x-real-ip on all forwarded requests.
-		// This needs a security review.
-
-		real_ip := r.Header.Get("X-Real-IP")
-		if len(real_ip) > 0 {
-			w.Write([]byte("NOT ALLOWED"))
-			return
-		}
-		parts := strings.Split(r.URL.Path, "/")
-		if len(parts) < 3 {
-			log.Printf("/script/ called with %s\n", parts)
-			return
-		}
-		script := re_unsafe.ReplaceAllString(parts[2], "_")
-
-		log.Printf("RUN SCRIPT %s\n", script)
-
-		db, err := core.UsersDatabase()
-		if err != nil {
-			log.Println(err)
-			w.Write([]byte("ERROR"))
-			return
-		}
-		_, err = core.Runner.Run(script+".js", map[string]interface{}{"path": parts[2:]}, db)
-		if err != nil {
-			log.Println(err)
-			w.Write([]byte("ERROR"))
-			return
-		}
-		w.Write([]byte("OK"))
-	}
-
 	// SET UP URLS
 
 	http.Handle("/socket", socketManager.GetListener())
-	http.HandleFunc("/login", parser.WrapSplit(loginViewHandler.Handle, lilo.HandleLogin))
-	http.HandleFunc("/logout", parser.Wrap(lilo.HandleLogout))
-	http.HandleFunc("/set_password", parser.WrapSplit(setPasswordViewHandler.Handle, lilo.HandleSetPassword))
-	http.HandleFunc("/signup", parser.WrapSplit(signupViewHandler.Handle, signupHandle))
-	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
-	http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
+
+	routes.AddRoute("/login", loginViewHandler, "GET")
+	routes.AddRoute("/login", router.TorchHandlerFunc(lilo.HandleLogin), "POST")
+	routes.AddRoute("/logout", router.TorchHandlerFunc(lilo.HandleLogout))
+	routes.AddRoute("/set_password", setPasswordViewHandler, "GET")
+	routes.AddRoute("/set_password", router.TorchHandlerFunc(lilo.HandleSetPassword), "POST")
+
+	routes.AddRoute("/report_html/%s/%d", router.HandlerFunc(pdfHandler.Preview))
+	routes.AddRoute("/report_pdf/%s/%d", router.HandleFunc(pdfHandler.GetPdf))
+
+	//http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
+	//http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
 	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
 	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
 	http.HandleFunc("/csv/", parser.Wrap(csvHandler.Handle))
 	http.HandleFunc("/reload", parser.Wrap(config.ReloadHandle))
 	http.HandleFunc("/emailpreview/", parser.Wrap(emailHandler.Preview))
 	http.HandleFunc("/sendmail/", parser.Wrap(emailHandler.Send))
-	http.HandleFunc("/script/", runScript)
+
+	http.HandleFunc("/script/", core.runScript)
 
 	if config.DevMode {
 		log.Println("---DEV MODE---")
@@ -209,8 +171,8 @@ func Serve(config *ServerConfig) error {
 		http.Handle("/pdf.css", &lessHandler{config: config, filename: "less/pdf.less"})
 	}
 
-	routerCore.Fallthrough(parser.Wrap(fallthroughHandler.Handle))
-	http.Handle("/", routerCore)
+	routes.Fallthrough(parser.Wrap(fallthroughHandler.Handle))
+	http.Handle("/", routes)
 
 	// SERVE!
 

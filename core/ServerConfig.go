@@ -34,7 +34,7 @@ type ServerConfig struct {
 	SmtpConfig      *email.SmtpConfig `json:"smtpConfig"`
 	SessionDumpFile *string           `json:"sessionDumpFile"`
 
-	PdfConfig *pdf.PdfHandlerConfig
+	PdfConfig *pdf.PDFHandlerConfig
 	PdfFile   *string `json:"pdfFile"`
 	PdfBinary *string `json:"pdfBinary"`
 

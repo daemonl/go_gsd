@@ -90,7 +90,6 @@ func (r *basicRequest) URLMatch(dest ...interface{}) error {
 		default:
 			return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to a %T",
 				i+1, t))
-
 		}
 	}
 	return nil

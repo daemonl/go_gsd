@@ -1,7 +1,9 @@
 package actions
 
 import (
+	"fmt"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/router"
 	"strings"
 )
 
@@ -19,10 +21,10 @@ func (q *DeleteQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *DeleteQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+func (r *DeleteQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
 	deleteRequest, ok := requestData.(*deleteRequest)
 	if !ok {
-		return nil, ErrF("Request Type Mismatch")
+		return nil, fmt.Errorf("Request Type Mismatch")
 	}
 
 	model := r.Core.GetModel()
@@ -45,7 +47,7 @@ func (r *DeleteQuery) HandleRequest(request Request, requestData interface{}) (i
 	}
 
 	if deleteCheckResult.Prevents {
-		return nil, ErrF("Could not delete, as owners exist: \n%s", strings.Join(deleteCheckResult.GetIssues(), "\n"))
+		return nil, fmt.Errorf("Could not delete, as owners exist: \n%s", strings.Join(deleteCheckResult.GetIssues(), "\n"))
 	}
 
 	err = deleteCheckResult.ExecuteRecursive(db)
@@ -75,6 +77,6 @@ func (r *DeleteQuery) HandleRequest(request Request, requestData interface{}) (i
 	}
 	go request.Broadcast("delete", deleteObject)
 
-	return result, nil
+	return JSON(result), nil
 
 }

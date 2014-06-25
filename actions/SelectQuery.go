@@ -1,7 +1,9 @@
 package actions
 
 import (
+	"fmt"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/router"
 )
 
 type SelectQuery struct {
@@ -13,11 +15,11 @@ func (q *SelectQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *SelectQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+func (r *SelectQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
 
 	rawQueryCondition, ok := requestData.(*databath.RawQueryConditions)
 	if !ok {
-		return nil, ErrF("Request type mismatch")
+		return nil, fmt.Errorf("Request type mismatch")
 	}
 	queryConditions, err := rawQueryCondition.TranslateToQuery()
 	if err != nil {
@@ -46,6 +48,6 @@ func (r *SelectQuery) HandleRequest(request Request, requestData interface{}) (i
 		return nil, err
 	}
 
-	return allRows, nil
+	return JSON(allRows), nil
 
 }

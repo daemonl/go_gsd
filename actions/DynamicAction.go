@@ -1,6 +1,9 @@
 package actions
 
-import ()
+import (
+	"fmt"
+	"github.com/daemonl/go_gsd/router"
+)
 
 type DynamicHandler struct {
 	Core Core
@@ -32,11 +35,11 @@ func (q *DynamicHandler) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *DynamicHandler) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+func (r *DynamicHandler) Handle(request Request, requestData interface{}) (router.Response, error) {
 
 	cqr, ok := requestData.(*dynamicRequest)
 	if !ok {
-		return nil, ErrF("Request Type Mismatch")
+		return nil, fmt.Errorf("Request Type Mismatch")
 	}
 
 	db, err := request.DB()
@@ -50,8 +53,12 @@ func (r *DynamicHandler) HandleRequest(request Request, requestData interface{})
 
 	fnConfig, ok := model.DynamicFunctions[cqr.FunctionName]
 	if !ok {
-		return nil, ErrF("No registered dynamic function named '%s'", cqr.FunctionName)
+		return nil, fmt.Errorf("No registered dynamic function named '%s'", cqr.FunctionName)
 	}
 
-	return r.Core.RunDynamic(fnConfig.Filename, cqr.Parameters, db)
+	resp, err := r.Core.RunDynamic(fnConfig.Filename, cqr.Parameters, db)
+	if err != nil {
+		return nil, err
+	}
+	return JSON(resp), nil
 }

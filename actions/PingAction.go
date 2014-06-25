@@ -1,6 +1,9 @@
 package actions
 
-import ()
+import (
+	"fmt"
+	"github.com/daemonl/go_gsd/router"
+)
 
 type PingAction struct {
 	Core Core
@@ -15,10 +18,10 @@ func (q *PingAction) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *PingAction) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+func (r *PingAction) Handle(request Request, requestData interface{}) (router.Response, error) {
 	cqr, ok := requestData.(*PingActionRequest)
 	if !ok {
-		return nil, ErrF("Request Type Mismatch")
+		return nil, fmt.Errorf("Request Type Mismatch")
 	}
-	return cqr.Msg, nil
+	return JSON(cqr.Msg), nil
 }

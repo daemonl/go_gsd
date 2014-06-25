@@ -1,7 +1,9 @@
 package actions
 
 import (
+	"fmt"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/shared_structs"
 )
 
@@ -25,10 +27,10 @@ func (q *CreateQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *CreateQuery) HandleRequest(request Request, requestObject interface{}) (interface{}, error) {
+func (r *CreateQuery) Handle(request Request, requestObject interface{}) (router.Response, error) {
 	createRequest, ok := requestObject.(*createRequest)
 	if !ok {
-		return nil, ErrF("Request Type Mismatch")
+		return nil, fmt.Errorf("Request Type Mismatch")
 	}
 
 	session := request.Session()
@@ -85,5 +87,5 @@ func (r *CreateQuery) HandleRequest(request Request, requestObject interface{}) 
 
 	go r.Core.DoHooksPostAction(db, actionSummary)
 	go request.Broadcast("create", createObject)
-	return result, nil
+	return JSON(result), nil
 }

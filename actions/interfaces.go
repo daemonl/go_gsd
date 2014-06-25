@@ -3,6 +3,7 @@ package actions
 import (
 	"database/sql"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/shared_structs"
 	"github.com/daemonl/go_gsd/torch"
 )
@@ -10,14 +11,14 @@ import (
 type Request interface {
 	Session() torch.Session
 	Broadcast(functionName string, object interface{})
-	GetContext() databath.Context
+	GetContext() torch.Context
 	//URLMatch(dest ...interface{}) error
 	DB() (*sql.DB, error)
 }
 
 type Handler interface {
 	RequestDataPlaceholder() interface{}
-	HandleRequest(req Request, requestData interface{}) (interface{}, error)
+	Handle(req Request, requestData interface{}) (router.Response, error)
 }
 
 type Core interface {

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"io"
@@ -19,6 +18,7 @@ import (
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/file"
 	"github.com/daemonl/go_gsd/pdf"
+	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
@@ -63,7 +63,7 @@ func Serve(config *ServerConfig) error {
 
 	sessionStore := torch.InMemorySessionStore(config.SessionDumpFile, lilo.LoadUserById, core.OpenDatabaseConnection)
 
-	parser := torch.Parser{
+	parser := &torch.Parser{
 		Store:          sessionStore,
 		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
 	}
@@ -87,42 +87,15 @@ func Serve(config *ServerConfig) error {
 	}
 
 	socketManager := socket.GetManager(parser.Store)
+	routerCore := router.GetRouter(parser)
 
 	for funcName, handler := range handlerMap {
-
 		func(funcName string, handler actions.Handler) {
-
 			// Register handler with the Socket Manager
 			socketManager.RegisterHandler(funcName, handler)
 
-			// Wrap the action in a torch request
-			rFunc := func(request torch.Request) {
+			routerCore.AddRoute("/ajax/"+funcName, actions.AsRouterHandler(handler), "POST")
 
-				requestData := handler.RequestDataPlaceholder()
-				writer, r := request.GetRaw()
-
-				// Decode request body JSON to object
-				dec := json.NewDecoder(r.Body)
-				err := dec.Decode(requestData)
-				if err != nil {
-					request.DoError(err)
-					return
-				}
-
-				// Do the request
-				responseObject, err := handler.HandleRequest(request, requestData)
-
-				// Encode response object as JSON
-				if err != nil {
-					request.DoError(err)
-					return
-				}
-				enc := json.NewEncoder(writer)
-				enc.Encode(responseObject)
-			}
-
-			// Add the wrapped torch request to the standard handler.
-			http.HandleFunc("/ajax/"+funcName, parser.Wrap(rFunc))
 		}(funcName, handler)
 	}
 
@@ -236,7 +209,8 @@ func Serve(config *ServerConfig) error {
 		http.Handle("/pdf.css", &lessHandler{config: config, filename: "less/pdf.less"})
 	}
 
-	http.HandleFunc("/", parser.Wrap(fallthroughHandler.Handle))
+	routerCore.Fallthrough(parser.Wrap(fallthroughHandler.Handle))
+	http.Handle("/", routerCore)
 
 	// SERVE!
 

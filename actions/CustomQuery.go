@@ -1,6 +1,9 @@
 package actions
 
-import ()
+import (
+	"fmt"
+	"github.com/daemonl/go_gsd/router"
+)
 
 type CustomQuery struct {
 	Core Core
@@ -16,16 +19,16 @@ func (q *CustomQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *CustomQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+func (r *CustomQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
 	cqr, ok := requestData.(*customQueryRequest)
 	if !ok {
-		return nil, ErrF("Request Type Mismatch")
+		return nil, fmt.Errorf("Request Type Mismatch")
 	}
 	model := r.Core.GetModel()
 
 	customQuery, ok := model.CustomQueries[cqr.QueryName]
 	if !ok {
-		return nil, ErrF("No custom query called '%s'", cqr.QueryName)
+		return nil, fmt.Errorf("No custom query called '%s'", cqr.QueryName)
 	}
 
 	db, err := request.DB()
@@ -38,5 +41,5 @@ func (r *CustomQuery) HandleRequest(request Request, requestData interface{}) (i
 		return nil, err
 	}
 
-	return results, nil
+	return JSON(results), nil
 }

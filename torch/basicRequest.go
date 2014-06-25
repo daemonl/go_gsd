@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/daemonl/databath"
 	"log"
 	"net/http"
 	"strconv"
@@ -55,7 +54,7 @@ func (r *basicRequest) GetWriter() http.ResponseWriter {
 	return r.writer
 }
 
-func (r *basicRequest) GetContext() databath.Context {
+func (r *basicRequest) GetContext() Context {
 	if r.session == nil {
 		return nil
 	}
@@ -152,4 +151,8 @@ func (request *basicRequest) SetSession(session Session) {
 	request.session = session
 	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 86400, Value: *request.session.Key()}
 	request.writer.Header().Add("Set-Cookie", c.String())
+}
+
+func (request *basicRequest) Logf(format string, params ...interface{}) {
+	log.Printf(format, params...)
 }

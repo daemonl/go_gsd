@@ -4,7 +4,6 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"database/sql"
 	"encoding/json"
-	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/torch"
 	"log"
 )
@@ -93,13 +92,6 @@ func (os *OpenSocket) Broadcast(functionName string, object interface{}) {
 	os.Manager.Broadcast(functionName, object)
 }
 
-func (os *OpenSocket) GetContext() databath.Context {
-	context := &databath.MapContext{
-		IsApplication:   false,
-		UserAccessLevel: os.session.User().Access(),
-		Fields:          make(map[string]interface{}),
-	}
-	context.Fields["#me"] = *os.session.UserID()
-	context.Fields["#user"] = *os.session.UserID()
-	return context
+func (os *OpenSocket) GetContext() torch.Context {
+	return os.Session().User().GetContext()
 }

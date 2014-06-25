@@ -1,7 +1,9 @@
 package actions
 
 import (
+	"fmt"
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/shared_structs"
 )
 
@@ -19,10 +21,10 @@ func (q *UpdateQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *UpdateQuery) HandleRequest(request Request, requestData interface{}) (interface{}, error) {
+func (r *UpdateQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
 	updateRequest, ok := requestData.(*updateRequest)
 	if !ok {
-		return nil, ErrF("Request type mismatch")
+		return nil, fmt.Errorf("Request type mismatch")
 	}
 	queryConditions, err := updateRequest.Conditions.TranslateToQuery()
 	if err != nil {
@@ -78,5 +80,5 @@ func (r *UpdateQuery) HandleRequest(request Request, requestData interface{}) (i
 		go r.Core.DoHooksPostAction(db, actionSummary)
 
 	}
-	return map[string]int64{"affected": rows}, nil
+	return JSON(map[string]int64{"affected": rows}), nil
 }

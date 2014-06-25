@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/daemonl/go_gsd/actions"
+	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/torch"
 	"io"
 	"log"
@@ -49,7 +50,7 @@ func (ssm *StringSocketMessage) PipeMessage(w io.Writer) {
 
 type Handler interface {
 	RequestDataPlaceholder() interface{}
-	HandleRequest(ac actions.Request, requestObject interface{}) (interface{}, error)
+	Handle(ac actions.Request, requestObject interface{}) (router.Response, error)
 }
 
 func GetManager(sessionStore torch.SessionStore) *Manager {
@@ -171,7 +172,7 @@ func (m *Manager) parse(raw string, os *OpenSocket) {
 		return
 	}
 
-	resp, err := handlerObj.HandleRequest(os, requestObj)
+	resp, err := handlerObj.Handle(os, requestObj)
 	if err != nil {
 		log.Printf("ERROR: %s\n", err.Error())
 		os.SendError(responseId, err)

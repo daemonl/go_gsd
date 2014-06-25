@@ -1,8 +1,6 @@
 package torch
 
-import (
-	"github.com/daemonl/databath"
-)
+import ()
 
 type basicUser struct {
 	id             uint64
@@ -16,9 +14,9 @@ func (u *basicUser) ID() uint64 {
 	return u.id
 }
 
-func (u *basicUser) GetContext() databath.Context {
+func (u *basicUser) GetContext() Context {
 
-	context := &databath.MapContext{
+	context := &mapContext{
 		IsApplication:   false,
 		UserAccessLevel: u.access,
 		Fields:          make(map[string]interface{}),

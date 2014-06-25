@@ -2,7 +2,6 @@ package torch
 
 import (
 	"database/sql"
-	"github.com/daemonl/databath"
 	"net/http"
 	"time"
 )
@@ -24,7 +23,7 @@ type SessionStore interface {
 }
 
 type User interface {
-	GetContext() databath.Context
+	GetContext() Context
 	CheckPassword(string) (bool, error)
 	ID() uint64
 	Access() uint64
@@ -56,7 +55,7 @@ type Request interface {
 	Method() string
 	Redirect(to string)
 	DB() (*sql.DB, error)
-	GetContext() databath.Context
+	GetContext() Context
 	URLMatch(dest ...interface{}) error
 	DoError(err error)
 	DoErrorf(format string, parameters ...interface{})
@@ -70,4 +69,6 @@ type Request interface {
 	Broadcast(name string, val interface{})
 
 	Write(bytes []byte) (int, error)
+
+	Logf(string, ...interface{})
 }

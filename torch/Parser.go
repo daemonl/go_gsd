@@ -26,7 +26,7 @@ func (parser *Parser) Wrap(handler func(Request)) func(w http.ResponseWriter, r 
 		log.Println(string(d))
 		defer log.Printf("End Request\n")
 
-		request, err := parser.parseRequest(w, r)
+		request, err := parser.Parse(w, r)
 		if err != nil {
 			log.Fatal(err)
 			w.Write([]byte("An error occurred"))
@@ -80,7 +80,7 @@ func (parser *Parser) WrapSplit(handlers ...func(Request)) func(w http.ResponseW
 // ParseRequest is a utility usually used internally to give a Request object to a standard http request
 // Exported for better flexibility
 // ParseRequest opens a database session for request.DB(), It will need to be closed...
-func (parser *Parser) parseRequest(w http.ResponseWriter, r *http.Request) (Request, error) {
+func (parser *Parser) Parse(w http.ResponseWriter, r *http.Request) (Request, error) {
 	request := basicRequest{
 		writer: w,
 		raw:    r,

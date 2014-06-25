@@ -1,17 +1,13 @@
 package actions
 
-import (
-	"fmt"
-)
+import ()
 
-type StandardError struct {
-	Message string
+type JSONResponse struct {
+	obj interface{}
 }
 
-func (e *StandardError) Error() string {
-	return e.Message
-}
-
-func ErrF(format string, parameters ...interface{}) error {
-	return &StandardError{Message: fmt.Sprintf(format, parameters...)}
+func JSON(obj interface{}) *JSONResponse {
+	return &JSONResponse{
+		obj: obj,
+	}
 }

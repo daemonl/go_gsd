@@ -3,31 +3,61 @@ package torch
 import (
 	"bufio"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type inMemorySessionStore struct {
-	sessions  map[string]Session
-	Broadcast func(name string, val interface{})
+	sessions          map[string]Session
+	dumpFile          *string
+	broadcast         func(string, interface{})
+	getDatabaseMethod func(Session) (*sql.DB, error)
 }
 
-func InMemorySessionStore() SessionStore {
+func InMemorySessionStore(dumpFile *string, loadUserById func(uint64) (User, error), getDatabaseMethod func(Session) (*sql.DB, error)) SessionStore {
 	ss := inMemorySessionStore{
-		sessions: make(map[string]Session),
+		sessions:          make(map[string]Session),
+		dumpFile:          dumpFile,
+		getDatabaseMethod: getDatabaseMethod,
 	}
 
 	go ss.StartExpiry()
+
+	// Load any sessions which are stored in the session dump file.
+	// This allows for sessions to persist when a normal restart happens.
+
+	if dumpFile != nil {
+		log.Println("=== HIDRATE SESSIONS ===")
+
+		sessFile, err := os.Open(*dumpFile)
+		if err != nil {
+			log.Printf("Could not load sessions: %s\n", err.Error())
+		} else {
+			ss.loadSessions(sessFile, loadUserById)
+			sessFile.Close()
+		}
+		log.Println("=== END SESSIONS ===")
+	}
+
 	return &ss
 }
 
-func (ss *inMemorySessionStore) DumpSessions(w io.Writer) {
+func (ss *inMemorySessionStore) DumpSessions() {
+	if ss.dumpFile == nil {
+		return
+	}
+	w, err := os.Create(*ss.dumpFile)
+	if err != nil {
+		log.Printf("Error dumping sessions: %s\n", err.Error())
+	}
+	//dumpFile
 	for _, session := range ss.sessions {
 		sKey := session.Key()
 		sUser := session.UserID()
@@ -37,7 +67,7 @@ func (ss *inMemorySessionStore) DumpSessions(w io.Writer) {
 	}
 }
 
-func (ss *inMemorySessionStore) LoadSessions(r io.Reader, loadUser func(uint64) (User, error)) {
+func (ss *inMemorySessionStore) loadSessions(r io.Reader, loadUser func(uint64) (User, error)) {
 	lr := bufio.NewReader(r)
 	for {
 		line, err := lr.ReadString('\n')
@@ -70,11 +100,22 @@ func (ss *inMemorySessionStore) LoadSessions(r io.Reader, loadUser func(uint64) 
 	}
 }
 
+func (ss *inMemorySessionStore) SetBroadcast(broadcast func(string, interface{})) {
+	ss.broadcast = broadcast
+}
+
+func (ss *inMemorySessionStore) GetDatabaseConnectionForSession(session Session) (*sql.DB, error) {
+	return ss.getDatabaseMethod(session)
+}
+
+func (ss *inMemorySessionStore) Broadcast(name string, data interface{}) {
+	ss.broadcast(name, data)
+}
+
 func (ss *inMemorySessionStore) StartExpiry() {
 	for {
 		time.Sleep(time.Second * 10)
 
-		log.Println("CHECK SESSION EXPIRY")
 		for key, s := range ss.sessions {
 			if time.Since(s.LastRequest()).Minutes() > 30 {
 				log.Printf("Expire Session %s", key)
@@ -101,7 +142,7 @@ func (ss *inMemorySessionStore) GetSession(key string) (Session, error) {
 	sess, ok := ss.sessions[key]
 	if !ok {
 		fmt.Printf("Session Not Found: %s\n", key)
-		return nil, errors.New("No session with that key")
+		return nil, nil //errors.New("No session with that key")
 	}
 	sess.UpdateLastRequest()
 	return sess, nil

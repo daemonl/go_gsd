@@ -57,7 +57,7 @@ func parseCLI() *core.ServerConfig {
 	config.DevMode = devMode
 
 	if config.EmailFile != nil {
-		log.Printf("Load email config from %s\n" , config.EmailFile)
+		log.Printf("Load email config from %s\n", *config.EmailFile)
 		var ec email.EmailHandlerConfig
 		//ec1 := make(map[string]interface{})
 		err := fileNameToObject(*config.EmailFile, &ec)
@@ -68,7 +68,7 @@ func parseCLI() *core.ServerConfig {
 	}
 
 	if config.PdfFile != nil {
-		log.Printf("Load pdf config from %s\n" , config.PdfFile)
+		log.Printf("Load pdf config from %s\n", *config.PdfFile)
 		var ec pdf.PdfHandlerConfig
 		//ec1 := make(map[string]interface{})
 		err := fileNameToObject(*config.PdfFile, &ec)

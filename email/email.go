@@ -53,9 +53,10 @@ func (s *Sender) Send(email *Email) error {
 	if err != nil {
 		log.Println(err)
 		return err
-
 	}
 	defer c.Quit()
+
+	// For Testing
 
 	log.Println("Connected")
 
@@ -67,22 +68,20 @@ func (s *Sender) Send(email *Email) error {
 	}
 	log.Println("EHLO Done")
 
-	log.Println("Start TLS")
-	tlsConfig := tls.Config{}
-	if err = c.StartTLS(&tlsConfig); err != nil {
-		log.Println(err)
-		return err
-	}
-	log.Println("TLS Done")
+	if s.Config.ServerPort != "9999" {
+		log.Println("Start TLS")
+		tlsConfig := tls.Config{}
+		if err = c.StartTLS(&tlsConfig); err != nil {
+			return fmt.Errorf("SMTP TLS Error: %s", err.Error)
+		}
 
-	auth := smtp.PlainAuth("", s.Config.Username, s.Config.Password, s.Config.ServerAddress)
+		auth := smtp.PlainAuth("", s.Config.Username, s.Config.Password, s.Config.ServerAddress)
 
-	log.Println("Begin Auth")
-	if err = c.Auth(auth); err != nil {
-		log.Println(err)
-		return err
+		if err = c.Auth(auth); err != nil {
+			return fmt.Errorf("SMTP Auth error: %s", err.Error())
+		}
+
 	}
-	log.Println("End Auth")
 
 	/*
 		boundary := "f46d043c813270fc6b04c2d223da"
@@ -115,9 +114,7 @@ func (s *Sender) Send(email *Email) error {
 
 	w, err := c.Data()
 	if err != nil {
-		log.Println(err)
-		return err
-
+		return fmt.Errorf("SMPT Data Error: %s", err.Error())
 	}
 	buf.WriteTo(w)
 	w.Close()

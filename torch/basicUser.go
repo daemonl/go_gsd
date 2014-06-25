@@ -5,29 +5,38 @@ import (
 )
 
 type basicUser struct {
-	IDinternal     uint64 `json:"id"`
-	Username       string `json:"username"`
+	id             uint64
+	username       string
 	password       string
-	AccessInternal uint64 `json:"access"`
-	SetOnNextLogin bool   `json:"set_on_next_login"`
+	access         uint64
+	setOnNextLogin bool
 }
 
 func (u *basicUser) ID() uint64 {
-	return u.IDinternal
+	return u.id
 }
 
 func (u *basicUser) GetContext() databath.Context {
 
 	context := &databath.MapContext{
 		IsApplication:   false,
-		UserAccessLevel: u.AccessInternal,
+		UserAccessLevel: u.access,
 		Fields:          make(map[string]interface{}),
 	}
-	context.Fields["me"] = u.IDinternal
-	context.Fields["user"] = u.IDinternal
+	context.Fields["me"] = u.id
+	context.Fields["user"] = u.id
 	return context
 }
 
 func (u *basicUser) Access() uint64 {
-	return u.AccessInternal
+	return u.access
+}
+
+func (u *basicUser) WhoAmIObject() interface{} {
+	return map[string]interface{}{
+		"id":             u.id,
+		"username":       u.username,
+		"access":         u.access,
+		"setOnNextLogin": u.setOnNextLogin,
+	}
 }

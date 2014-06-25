@@ -1,6 +1,7 @@
 package torch
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 )
@@ -48,6 +49,9 @@ func (s *basicSession) DisplayFlash() []FlashMessage {
 	s.ResetFlash()
 	return fm
 }
+func (s *basicSession) Flash() []FlashMessage {
+	return s.DisplayFlash()
+}
 
 func (s *basicSession) LastRequest() time.Time {
 	return s.lastRequest
@@ -71,4 +75,8 @@ func (s *basicSession) UpdateLastRequest() {
 
 func (s *basicSession) SessionStore() SessionStore {
 	return s.store
+}
+
+func (s *basicSession) GetDatabaseConnection() (*sql.DB, error) {
+	return s.store.GetDatabaseConnectionForSession(s)
 }

@@ -19,6 +19,13 @@ type basicRequest struct {
 }
 
 func (r *basicRequest) DB() (*sql.DB, error) {
+	if r.db == nil {
+		db, err := r.session.GetDatabaseConnection()
+		if err != nil {
+			return nil, err
+		}
+		r.db = db
+	}
 	return r.db, nil
 }
 
@@ -129,12 +136,20 @@ func (request *basicRequest) Redirect(to string) {
 }
 
 func (request *basicRequest) ResetSession() error {
+	if request.session == nil {
+		return fmt.Errorf("No session when reset session was called")
+	}
 	s, err := request.session.SessionStore().NewSession()
 	if err != nil {
 		return err
 	}
-	request.session = s
+	request.SetSession(s)
+
+	return nil
+}
+
+func (request *basicRequest) SetSession(session Session) {
+	request.session = session
 	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 86400, Value: *request.session.Key()}
 	request.writer.Header().Add("Set-Cookie", c.String())
-	return nil
 }

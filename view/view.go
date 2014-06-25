@@ -99,8 +99,12 @@ type ViewData struct {
 }
 
 func (vh *ViewHandler) Handle(r torch.Request) {
+	session := r.Session()
+	if session == nil {
+		panic("NILL SESSION")
+	}
 	d := ViewData{
-		Session: r.Session(),
+		Session: session,
 		Data:    vh.Data,
 		D:       vh.JsData,
 		Root:    vh.Manager.IncludeRoot,

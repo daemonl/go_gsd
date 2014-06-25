@@ -10,6 +10,13 @@ type basicLoginLogout struct {
 	db *sql.DB
 }
 
+func GetBasicLoginLogout(db *sql.DB) LoginLogout {
+	lilo := &basicLoginLogout{
+		db: db,
+	}
+	return lilo
+}
+
 func (lilo *basicLoginLogout) HandleLogout(request Request) {
 	//request.Session.User = nil
 	request.ResetSession()
@@ -27,8 +34,8 @@ func (lilo *basicLoginLogout) ForceLogin(request Request, email string) {
 	lilo.doLogin(request, true, email, "")
 }
 
-func (lilo *basicLoginLogout) LoadUserById(db *sql.DB, id uint64) (*basicUser, error) {
-	rows, err := db.Query(`SELECT id, username, password, access, set_on_next_login FROM staff WHERE id = ?`, id)
+func (lilo *basicLoginLogout) LoadUserById(id uint64) (User, error) {
+	rows, err := lilo.db.Query(`SELECT id, username, password, access, set_on_next_login FROM staff WHERE id = ?`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -37,13 +44,15 @@ func (lilo *basicLoginLogout) LoadUserById(db *sql.DB, id uint64) (*basicUser, e
 		return nil, errors.New("Could not find a user in the session store")
 	}
 	user := &basicUser{}
-	rows.Scan(&user.IDinternal, &user.Username, &user.password, &user.AccessInternal, &user.SetOnNextLogin)
+	rows.Scan(&user.id, &user.username, &user.password, &user.access, &user.setOnNextLogin)
 	return user, nil
 }
 
 func (lilo *basicLoginLogout) doLogin(request Request, noPassword bool, username string, password string) {
 
 	doError := func(verboseMessage string, err error) {
+		log.Printf("Issue loggin in (not error): %s, U:%s", verboseMessage, username)
+
 		if err != nil {
 			log.Printf("Error loading user '%s' from database: %s\n", username, err.Error())
 		}
@@ -73,7 +82,7 @@ func (lilo *basicLoginLogout) doLogin(request Request, noPassword bool, username
 	}
 
 	user := basicUser{}
-	err = rows.Scan(&user.IDinternal, &user.Username, &user.password, &user.AccessInternal, &user.SetOnNextLogin)
+	err = rows.Scan(&user.id, &user.username, &user.password, &user.access, &user.setOnNextLogin)
 	if err != nil {
 		doError("Invalid user identifier", err)
 		return
@@ -100,7 +109,7 @@ func (lilo *basicLoginLogout) doLogin(request Request, noPassword bool, username
 	request.ResetSession()
 
 	request.Session().SetUser(&user)
-	if user.SetOnNextLogin {
+	if user.setOnNextLogin {
 		request.Redirect("/set_password")
 	} else {
 		request.Redirect(target)

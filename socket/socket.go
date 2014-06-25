@@ -122,7 +122,7 @@ func (m *Manager) listener(ws *websocket.Conn) {
 	go os.Wait()
 	defer os.Close()
 
-	whoAmIString, _ := json.Marshal(session.User)
+	whoAmIString, _ := json.Marshal(session.User().WhoAmIObject())
 
 	whoAmI := StringSocketMessage{
 		Message:      string(whoAmIString),

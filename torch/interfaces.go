@@ -9,11 +9,18 @@ import (
 
 type LoginLogout interface {
 	ForceLogin(request Request, email string)
+	LoadUserById(id uint64) (User, error)
+	HandleLogin(Request)
+	HandleLogout(Request)
+	HandleSetPassword(Request)
 }
 
 type SessionStore interface {
 	GetSession(key string) (Session, error)
 	NewSession() (Session, error)
+	DumpSessions()
+	SetBroadcast(func(string, interface{}))
+	GetDatabaseConnectionForSession(Session) (*sql.DB, error)
 }
 
 type User interface {
@@ -21,6 +28,7 @@ type User interface {
 	CheckPassword(string) (bool, error)
 	ID() uint64
 	Access() uint64
+	WhoAmIObject() interface{}
 }
 
 type Session interface {
@@ -32,10 +40,12 @@ type Session interface {
 	LastRequest() time.Time
 	UpdateLastRequest()
 	SessionStore() SessionStore
+	GetDatabaseConnection() (*sql.DB, error)
 
 	AddFlash(severity, format string, parameters ...interface{})
 	ResetFlash()
 	DisplayFlash() []FlashMessage
+	Flash() []FlashMessage //alias!
 }
 
 type Request interface {

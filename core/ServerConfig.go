@@ -1,6 +1,7 @@
 package core
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/daemonl/databath"
@@ -71,6 +72,17 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 	core.Hooker = &Hooker{
 		Core: core,
 	}
+
+	db, err := sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Ping()
+	if err != nil {
+		return nil, fmt.Errorf("Database ping failed: %s", err.Error())
+	}
+
+	core.DB = db
 
 	return core, err
 

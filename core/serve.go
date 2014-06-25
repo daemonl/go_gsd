@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strings"
 
-	"database/sql"
 	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/csv"
@@ -28,18 +27,11 @@ import (
 
 var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
 
-func checkHandle(request torch.Request) {
-	request.Writef("Session Key: %s\n\n", *request.Session.Key)
-	if request.Session.User != nil {
-		request.Writef("Username: %s", request.Session().User().Username)
-	}
-}
-
 func signupHandle(request torch.Request) {
 	//username := request.PostValueString("username")
 	password := request.PostValueString("password")
 	hashStore := torch.HashPassword(password)
-	request.Write(hashStore)
+	request.WriteString(hashStore)
 }
 
 func Sync(config *ServerConfig, force bool) error {
@@ -64,42 +56,16 @@ func Serve(config *ServerConfig) error {
 	if err != nil {
 		return err
 	}
-	db, err := sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
-	if err != nil {
-		return err
-	}
-	core.DB = db
 
 	model := core.GetModel()
 
+	lilo := torch.GetBasicLoginLogout(core.DB)
+
+	sessionStore := torch.InMemorySessionStore(config.SessionDumpFile, lilo.LoadUserById, core.OpenDatabaseConnection)
+
 	parser := torch.Parser{
-		Store:                  torch.InMemorySessionStore(),
-		PublicPatterns:         make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
-		OpenDatabaseConnection: core.OpenDatabaseConnection,
-	}
-
-	// Load any sessions which are stored in the session dump file.
-	// This allows for sessions to persist when a normal restart happens.
-
-	if config.SessionDumpFile != nil {
-		log.Println("=== HIDRATE SESSIONS ===")
-
-		sessFile, err := os.Open(*config.SessionDumpFile)
-		if err != nil {
-			log.Printf("Could not load sessions: %s\n", err.Error())
-		} else {
-			db, err := core.UsersDatabase()
-			if err != nil {
-				log.Printf("Could not load sessions: %s\n", err.Error())
-				sessFile.Close()
-			} else {
-				parser.Store.LoadSessions(sessFile, func(id uint64) (*torch.User, error) {
-					return torch.LoadUserById(db, id)
-				})
-				sessFile.Close()
-			}
-		}
-		log.Println("=== END SESSIONS ===")
+		Store:          sessionStore,
+		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
 	}
 
 	// Insert the regexes for all 'public' urls
@@ -160,7 +126,7 @@ func Serve(config *ServerConfig) error {
 		}(funcName, handler)
 	}
 
-	parser.Store.Broadcast = socketManager.Broadcast
+	parser.Store.SetBroadcast(socketManager.Broadcast)
 
 	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
 
@@ -168,7 +134,7 @@ func Serve(config *ServerConfig) error {
 		Model:       model,
 		ViewManager: config.ViewManager,
 		Runner:      core.Runner,
-		DB:          db,
+		DB:          core.DB,
 	}
 
 	loginViewHandler := view.ViewHandler{
@@ -249,10 +215,9 @@ func Serve(config *ServerConfig) error {
 	// SET UP URLS
 
 	http.Handle("/socket", socketManager.GetListener())
-	http.HandleFunc("/check", parser.Wrap(checkHandle))
-	http.HandleFunc("/login", parser.WrapSplit(loginViewHandler.Handle, torch.HandleLogin))
-	http.HandleFunc("/logout", parser.Wrap(torch.HandleLogout))
-	http.HandleFunc("/set_password", parser.WrapSplit(setPasswordViewHandler.Handle, torch.HandleSetPassword))
+	http.HandleFunc("/login", parser.WrapSplit(loginViewHandler.Handle, lilo.HandleLogin))
+	http.HandleFunc("/logout", parser.Wrap(lilo.HandleLogout))
+	http.HandleFunc("/set_password", parser.WrapSplit(setPasswordViewHandler.Handle, lilo.HandleSetPassword))
 	http.HandleFunc("/signup", parser.WrapSplit(signupViewHandler.Handle, signupHandle))
 	http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
 	http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
@@ -296,17 +261,7 @@ func Serve(config *ServerConfig) error {
 
 	log.Printf("=== SHUTDOWN INITIATED ===")
 
-	if config.SessionDumpFile != nil {
-		log.Println("=== DUMP SESSIONS ===")
-
-		sessFile, err := os.Create(*config.SessionDumpFile)
-		if err != nil {
-			log.Printf("Could not save sessions: %s\n", err.Error())
-		} else {
-			parser.Store.DumpSessions(sessFile)
-			sessFile.Close()
-		}
-	}
+	sessionStore.DumpSessions()
 
 	log.Println("=== SHUTDOWN COMPLETE ===")
 

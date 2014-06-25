@@ -2,6 +2,7 @@ package torch
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -10,8 +11,7 @@ import (
 
 type Parser struct {
 	Store                  SessionStore
-	DB                     *sql.DB
-	OpenDatabaseConnection func(session *Session) (*sql.DB, error)
+	OpenDatabaseConnection func(session Session) (*sql.DB, error)
 	PublicPatterns         []*regexp.Regexp
 }
 
@@ -33,17 +33,6 @@ func (parser *Parser) Wrap(handler func(Request)) func(w http.ResponseWriter, r 
 			return
 		}
 		defer request.Cleanup()
-
-		/*
-			db, err := parser.OpenDatabaseConnection(request.Session)
-			if err != nil {
-				log.Fatal(err)
-				w.Write([]byte("An error occurred"))
-				return
-			}
-			request.db = db
-			//defer request.db.Close()
-		*/
 
 		if !request.IsLoggedIn() {
 			log.Printf("PUBLIC: Check Path %s", r.URL.Path)
@@ -99,14 +88,29 @@ func (parser *Parser) parseRequest(w http.ResponseWriter, r *http.Request) (Requ
 
 	sessCookie, err := r.Cookie("gsd_session")
 	if err != nil {
-		request.ResetSession()
+		log.Printf("Error getting cookie: %s\n", err.Error())
+		sess, err := parser.Store.NewSession()
+		if err != nil {
+			return nil, err
+		}
+		request.SetSession(sess)
 	} else {
+		//log.Printf("No err geting cookie: %s\n", sessCookie.Value)
 		sess, err := parser.Store.GetSession(sessCookie.Value)
 		if err != nil {
-			request.ResetSession()
-		} else {
-			request.session = sess
+			log.Printf("Error getting session from cookie: %s\n", err.Error())
 		}
+		if sess == nil {
+			log.Println("Session cookie not found")
+			sess, err = parser.Store.NewSession()
+			if err != nil {
+				return nil, fmt.Errorf("Could not load session: %s", err.Error())
+			}
+			if sess == nil {
+				return nil, fmt.Errorf("Could not load session: returned nill")
+			}
+		}
+		request.SetSession(sess)
 	}
 
 	return &request, nil

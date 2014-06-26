@@ -2,21 +2,31 @@ package core
 
 import (
 	"database/sql"
+
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/dynamic"
-	"github.com/daemonl/go_gsd/email"
+	"github.com/daemonl/go_gsd/components"
 	"github.com/daemonl/go_gsd/shared"
 
-	"log"
+	"github.com/daemonl/go_gsd/view"
 )
 
 type GSDCore struct {
-	Model  *databath.Model
-	Email  *email.EmailHandler
-	Hooker *Hooker
 	Config *ServerConfig
-	Runner *dynamic.DynamicRunner
-	DB     *sql.DB
+	Model  *databath.Model
+
+	DB *sql.DB
+
+	Hooker   components.Hooker
+	Mailer   components.Mailer
+	Reporter components.Reporter
+	PDFer    components.PDFer
+	Runner   components.Runner
+
+	CSVHandler  shared.IPathHandler
+	PDFHandler  shared.IPathHandler
+	MailHandler shared.IPathHandler
+
+	TemplateManager *view.TemplateManager
 }
 
 func (core *GSDCore) OpenDatabaseConnection(session shared.ISession) (*sql.DB, error) {
@@ -28,12 +38,12 @@ func (core *GSDCore) UsersDatabase() (*sql.DB, error) {
 	return sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
 }
 
-func (core *GSDCore) DoHooksPreAction(db *sql.DB, as *shared.ActionSummary) {
-	core.Hooker.DoPreHooks(db, as)
+func (core *GSDCore) DoHooksPreAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession) {
+	core.Hooker.DoPreHooks(db, as, session)
 }
 
-func (core *GSDCore) DoHooksPostAction(db *sql.DB, as *shared.ActionSummary) {
-	core.Hooker.DoPostHooks(db, as)
+func (core *GSDCore) DoHooksPostAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession) {
+	core.Hooker.DoPostHooks(db, as, session)
 }
 
 func (core *GSDCore) GetModel() *databath.Model {
@@ -45,12 +55,5 @@ func (core *GSDCore) RunDynamic(filename string, parameters map[string]interface
 }
 
 func (core *GSDCore) SendMail(to string, subject string, body string) {
-	log.Printf("SEND MAIL TO %s: %s\n", to, subject)
-	e := &email.Email{
-		Recipient: to,
-		Sender:    core.Config.EmailConfig.From,
-		Subject:   subject,
-		Html:      body,
-	}
-	go core.Email.Sender.Send(e)
+	core.Mailer.SendSimple(to, subject, body)
 }

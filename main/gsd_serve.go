@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/daemonl/go_gsd/core"
-	"github.com/daemonl/go_gsd/email"
-	"github.com/daemonl/go_gsd/pdf"
+
+	"github.com/daemonl/go_gsd/reporter"
 )
 
 var configFilename string
@@ -44,45 +45,41 @@ func fileNameToObject(filename string, object interface{}) error {
 	return nil
 }
 
-func parseCLI() *core.ServerConfig {
+func parseCLI() (*core.ServerConfig, error) {
 	flag.Parse()
 	log.Printf("Load config from %s\n", configFilename)
 
 	var config core.ServerConfig
 	err := fileNameToObject(configFilename, &config)
 	if err != nil {
-		panic("Could not load config, Aborting: " + err.Error())
+		return nil, err
+
 	}
 
 	config.DevMode = devMode
 
-	if config.EmailFile != nil {
-		log.Printf("Load email config from %s\n", *config.EmailFile)
-		var ec email.EmailHandlerConfig
-		//ec1 := make(map[string]interface{})
-		err := fileNameToObject(*config.EmailFile, &ec)
+	if config.ReportFile != nil {
+		log.Printf("Load email config from %s\n", *config.ReportFile)
+		var rc map[string]reporter.ReportConfig
+
+		err := fileNameToObject(*config.ReportFile, &rc)
 		if err != nil {
-			panic("Could not load config, Aborting: " + err.Error())
+			return nil, err
 		}
-		config.EmailConfig = &ec
+		config.Reports = rc
 	}
 
-	if config.PDFFile != nil {
-		log.Printf("Load pdf config from %s\n", *config.PDFFile)
-		var ec pdf.PDFHandlerConfig
-		//ec1 := make(map[string]interface{})
-		err := fileNameToObject(*config.PDFFile, &ec)
-		if err != nil {
-			panic("Could not load config, Aborting: " + err.Error())
-		}
-
-		config.PDFConfig = &ec
-	}
-	return &config
+	return &config, nil
 }
 
 func main() {
-	config := parseCLI()
+	config, err := parseCLI()
+	if err != nil {
+		log.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+		return
+	}
 
 	if doSync {
 		err := core.Sync(config, forceSync)
@@ -93,8 +90,11 @@ func main() {
 		return
 	}
 
-	err := core.Serve(config)
+	err = core.Serve(config)
 	if err != nil {
-		log.Println(err)
+		log.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+		return
 	}
 }

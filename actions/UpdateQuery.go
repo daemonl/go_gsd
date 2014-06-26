@@ -49,7 +49,7 @@ func (r *UpdateQuery) Handle(request Request, requestData interface{}) (shared.I
 			Pk:         *updateRequest.Conditions.Pk,
 			Fields:     updateRequest.Changeset,
 		}
-		r.Core.DoHooksPreAction(db, actionSummary)
+		r.Core.DoHooksPreAction(db, actionSummary, session)
 	}
 	sqlString, parameters, err := query.BuildUpdate(updateRequest.Changeset)
 	if err != nil {
@@ -76,7 +76,7 @@ func (r *UpdateQuery) Handle(request Request, requestData interface{}) (shared.I
 			Pk:         *updateRequest.Conditions.Pk,
 			Fields:     updateRequest.Changeset,
 		}
-		go r.Core.DoHooksPostAction(db, actionSummary)
+		go r.Core.DoHooksPostAction(db, actionSummary, session)
 
 	}
 	return JSON(map[string]int64{"affected": rows}), nil

@@ -1,4 +1,4 @@
-package core
+package hooker
 
 import (
 	"database/sql"
@@ -6,15 +6,21 @@ import (
 	"github.com/daemonl/go_gsd/shared"
 	"log"
 	"time"
+
+	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/components"
 )
 
 type Hooker struct {
-	Core *GSDCore
+	Model    *databath.Model
+	Runner   components.Runner
+	Reporter components.Reporter
+	Mailer   components.Mailer
 }
 
-func (h *Hooker) DoPreHooks(db *sql.DB, as *shared.ActionSummary) {
+func (h *Hooker) DoPreHooks(db *sql.DB, as *shared.ActionSummary, session shared.ISession) {
 
-	model := h.Core.Model
+	model := h.Model
 	collection := model.Collections[as.Collection]
 
 	for _, hook := range collection.Hooks {
@@ -48,12 +54,12 @@ func (h *Hooker) DoPreHooks(db *sql.DB, as *shared.ActionSummary) {
 
 	}
 }
-func (h *Hooker) DoPostHooks(db *sql.DB, as *shared.ActionSummary) {
-	go h.WriteHistory(db, as)
+func (h *Hooker) DoPostHooks(db *sql.DB, as *shared.ActionSummary, session shared.ISession) {
+	go h.WriteHistory(db, as, session)
 
 	log.Println("PROCESS POST HOOKS")
 
-	model := h.Core.Model
+	model := h.Model
 	collection := model.Collections[as.Collection]
 
 	for _, hook := range collection.Hooks {
@@ -93,9 +99,9 @@ func (h *Hooker) DoPostHooks(db *sql.DB, as *shared.ActionSummary) {
 				"fields":     as.Fields,
 			}
 
-			dr := h.Core.Runner
+			dr := h.Runner
 
-			fnConfig, ok := h.Core.Model.DynamicFunctions[scriptName]
+			fnConfig, ok := h.Model.DynamicFunctions[scriptName]
 			if !ok {
 				log.Printf("No registered dynamic function named '%s'", scriptName)
 				return
@@ -127,28 +133,22 @@ func (h *Hooker) DoPostHooks(db *sql.DB, as *shared.ActionSummary) {
 			//hook.Email.Template, as.Pk,
 			//viewData :=
 			log.Printf("TPL: %s\n", hook.Email.Template)
-			report, err := h.Core.Email.GetReport(hook.Email.Template, as.Pk, nil)
+			report, err := h.Reporter.GetReportHTMLWriter(hook.Email.Template, as.Pk, session)
 			if err != nil {
 				log.Println(err.Error())
 				return
 			}
 
-			viewData, err := report.PrepareData()
-			if err != nil {
-				log.Println(err.Error())
-				return
-			}
-
-			go h.Core.Email.SendMailNow(viewData, hook.Email.Recipient, "")
+			go h.Mailer.SendResponse(report, hook.Email.Recipient, "")
 
 		}
 	}
 }
 
-func (h *Hooker) WriteHistory(db *sql.DB, as *shared.ActionSummary) {
+func (h *Hooker) WriteHistory(db *sql.DB, as *shared.ActionSummary, session shared.ISession) {
 	//, userId uint64, action string, collectionName string, entityId uint64) {
 
-	identity, _ := h.Core.Model.GetIdentityString(db, as.Collection, as.Pk)
+	identity, _ := h.Model.GetIdentityString(db, as.Collection, as.Pk)
 	timestamp := time.Now().Unix()
 
 	log.Println("WRITE HISTORY", as.UserId, identity, timestamp, as.Action, as.Collection, as.Pk)

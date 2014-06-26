@@ -10,14 +10,22 @@ import (
 
 type router struct {
 	routes             []*route
+	publicPatterns     []*regexp.Regexp
 	parser             shared.IParser
 	fallthroughHandler func(respWriter http.ResponseWriter, httpRequest *http.Request)
 }
 
-func GetRouter(p shared.IParser) Router {
+func GetRouter(p shared.IParser, rawPublicPatterns []string) Router {
 	r := &router{}
 	r.routes = make([]*route, 0, 0)
 	r.parser = p
+	r.publicPatterns = make([]*regexp.Regexp, len(rawPublicPatterns), len(rawPublicPatterns))
+
+	for i, pattern := range rawPublicPatterns {
+		reg := regexp.MustCompile(pattern)
+		r.publicPatterns[i] = reg
+	}
+
 	return r
 }
 
@@ -33,14 +41,23 @@ func (r *router) AddRoute(format string, handler shared.IHandler, methods ...str
 	return nil
 }
 
+func (r *router) Fallthrough(root string) {
+	h := http.FileServer(http.Dir(root))
+	r.fallthroughHandler = h.ServeHTTP
+}
+
 func (r *router) getRoute(format string, handler shared.IHandler, methods ...string) (*route, error) {
 	// Step 1, convert to a regexp.
 	reStr := format
 	reStr = strings.Replace(reStr, "%d", "[0-9]+", -1)
-	reStr = strings.Replace(reStr, "%s", "[0-9A-Za-z_]+", -1)
+	reStr = strings.Replace(reStr, "%s", `[0-9A-Za-z_]+`, -1)
+	reStr = strings.Replace(reStr, "%*", `.*`, -1)
+	format = strings.Replace(format, "%*", "%s", -1)
+	//log.Printf("%s -> %s\n", format, reStr)
 
 	re, err := regexp.Compile("^" + reStr + "$")
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
 
@@ -74,6 +91,7 @@ func (r *router) AddRoutePathFunc(format string, pathRequestFunc func(shared.IPa
 	}
 	handler := handlerFunc(normalRequestFunc)
 	route.handler = handler
+	r.routes = append(r.routes, route)
 	return nil
 }
 
@@ -84,7 +102,10 @@ func (r *router) getPathMatching(pathString string, method string) *route {
 
 searching:
 	for _, p := range r.routes {
+		//log.Printf("RE: %s ?= %s\n", p.re.String(), pathString)
+
 		if p.re.MatchString(pathString) {
+
 			if len(p.methods) < 1 {
 				found = p
 				break searching
@@ -103,23 +124,11 @@ searching:
 	return found
 }
 
-func (r *router) Fallthrough(h func(respWriter http.ResponseWriter, httpRequest *http.Request)) {
-	r.fallthroughHandler = h
-}
-
 func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Request) {
 
 	var err error
 
 	path := r.getPathMatching(httpRequest.URL.Path, httpRequest.Method)
-	if path == nil {
-		r.fallthroughHandler(respWriter, httpRequest)
-		//log.Printf("Path '%s %s' did not match any\n", httpRequest.Method, httpRequest.URL.Path)
-		//http.NotFound(respWriter, httpRequest)
-		return
-	}
-
-	log.Printf("Path %s Matches %s\n", httpRequest.URL.Path, path.format)
 
 	req, err := r.parser.Parse(respWriter, httpRequest)
 	if err != nil {
@@ -128,13 +137,34 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 		return
 	}
 
+	if path == nil {
+		isPublicPath := false
+		for _, p := range r.publicPatterns {
+			if p.MatchString(httpRequest.URL.Path) {
+				isPublicPath = true
+				break
+			}
+		}
+		log.Printf("Path '%s %s' did not match any\n", httpRequest.Method, httpRequest.URL.Path)
+		if isPublicPath || req.IsLoggedIn() {
+			r.fallthroughHandler(respWriter, httpRequest)
+		} else {
+			http.Redirect(respWriter, httpRequest, "/login", http.StatusTemporaryRedirect)
+		}
+		//
+		//http.NotFound(respWriter, httpRequest)
+		return
+	}
+
+	log.Printf("Path %s Matches %s\n", httpRequest.URL.Path, path.format)
+
 	req.Logf("Begin %s %s", httpRequest.Method, httpRequest.URL.RequestURI())
 	req.Logf("User Agent: %s", httpRequest.UserAgent())
 	defer req.Logf("End")
 
 	res, err := path.handler.Handle(wrapRequest(req, path))
 	if err != nil {
-		req.Logf("ERROR: %s", err.Error())
+		req.Logf("Handler Error: %s", err.Error())
 		respWriter.WriteHeader(500)
 		respWriter.Write([]byte(`INTERNAL SERVER ERROR`))
 		return
@@ -148,7 +178,7 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 
 	err = res.WriteTo(respWriter)
 	if err != nil {
-		req.Logf("ERROR: %s", err.Error())
+		req.Logf("WriteTo Error: %s", err.Error())
 		respWriter.WriteHeader(500)
 		respWriter.Write([]byte(`INTERNAL SERVER ERROR`))
 		return

@@ -1,38 +1,24 @@
 package core
 
 import (
-	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"regexp"
 
+	_ "github.com/go-sql-driver/mysql"
+
 	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_gsd/actions"
-	"github.com/daemonl/go_gsd/csv"
-	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/file"
-	"github.com/daemonl/go_gsd/pdf"
 	"github.com/daemonl/go_gsd/router"
-	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_gsd/view"
 	"github.com/daemonl/go_lib/google_auth"
 )
 
 var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
-
-func signupHandle(request shared.IRequest) {
-	//username := request.PostValueString("username")
-	password := request.PostValueString("password")
-	hashStore := torch.HashPassword(password)
-	request.WriteString(hashStore)
-}
 
 func Sync(config *ServerConfig, force bool) error {
 	core, err := config.GetCore()
@@ -46,7 +32,6 @@ func Sync(config *ServerConfig, force bool) error {
 	defer db.Close()
 	sync.SyncDb(db, core.GetModel(), force)
 	return nil
-
 }
 
 // Serve starts up a http server with all of the glorious configuration options
@@ -63,16 +48,7 @@ func Serve(config *ServerConfig) error {
 
 	sessionStore := torch.InMemorySessionStore(config.SessionDumpFile, lilo.LoadUserById, core.OpenDatabaseConnection)
 
-	parser := &torch.Parser{
-		Store:          sessionStore,
-		PublicPatterns: make([]*regexp.Regexp, len(config.PublicPatternsRaw), len(config.PublicPatternsRaw)),
-	}
-
-	// Insert the regexes for all 'public' urls
-	for i, pattern := range config.PublicPatternsRaw {
-		reg := regexp.MustCompile(pattern)
-		parser.PublicPatterns[i] = reg
-	}
+	parser := torch.BasicParser(sessionStore, config.PublicPatternsRaw)
 
 	// Register the AJAX and Socket methods (These methods work on both)
 	handlerMap := map[string]actions.Handler{
@@ -86,7 +62,7 @@ func Serve(config *ServerConfig) error {
 	}
 
 	socketManager := socket.GetManager(parser.Store)
-	routes := router.GetRouter(parser)
+	routes := router.GetRouter(parser, config.PublicPatternsRaw)
 
 	for funcName, handler := range handlerMap {
 		func(funcName string, handler actions.Handler) {
@@ -95,41 +71,10 @@ func Serve(config *ServerConfig) error {
 		}(funcName, handler)
 	}
 
-	parser.Store.SetBroadcast(socketManager.Broadcast)
+	loginViewHandler := core.TemplateManager.GetSimpleTemplateHandler("login.html")
+	setPasswordViewHandler := core.TemplateManager.GetSimpleTemplateHandler("set_password.html")
 
-	config.ViewManager = view.GetViewManager(config.TemplateRoot, config.TemplateIncludeRoot)
-
-	templateWriter := &view.TemplateWriter{
-		Model:       model,
-		ViewManager: config.ViewManager,
-		Runner:      core.Runner,
-		DB:          core.DB,
-	}
-
-	loginViewHandler := &view.ViewHandler{
-		Manager:      config.ViewManager,
-		TemplateName: "login.html",
-		Data:         nil,
-	}
-
-	setPasswordViewHandler := &view.ViewHandler{
-		Manager:      config.ViewManager,
-		TemplateName: "set_password.html",
-		Data:         nil,
-	}
-
-	emailHandler, err := email.GetEmailHandler(config.SmtpConfig, config.EmailConfig, templateWriter)
-	if err != nil {
-		log.Panic(err)
-	}
-	core.Email = emailHandler
-
-	pdfHandler, err := pdf.GetPDFHandler(*config.PDFBinary, config.PDFConfig, templateWriter)
-	if err != nil {
-		log.Panic(err)
-	}
 	fileHandler := file.GetFileHandler(config.UploadDirectory, model)
-	csvHandler := csv.GetCsvHandler(model)
 
 	if config.OAuthConfig != nil {
 		oauthHandler := google_auth.OAuthHandler{
@@ -139,31 +84,9 @@ func Serve(config *ServerConfig) error {
 		http.HandleFunc("/oauth/request", parser.Wrap(oauthHandler.OauthRequest))
 	}
 
-	fallthroughHandler := GetFallthroughHandler(config)
-
 	// SET UP URLS
 
 	http.Handle("/socket", socketManager.GetListener())
-
-	routes.AddRoute("/login", loginViewHandler, "GET")
-	routes.AddRouteFunc("/login", lilo.HandleLogin, "POST")
-	routes.AddRouteFunc("/logout", lilo.HandleLogout)
-	routes.AddRoute("/set_password", setPasswordViewHandler, "GET")
-	routes.AddRouteFunc("/set_password", lilo.HandleSetPassword, "POST")
-
-	routes.AddRoutePathFunc("/report_html/%s/%d", pdfHandler.Preview)
-	routes.AddRoutePathFunc("/report_pdf/%s/%d", pdfHandler.GetPDF)
-
-	routes.AddRoutePathFunc("/emailpreview/", emailHandler.Preview)
-	routes.AddRoutePathFunc("/sendmail/", emailHandler.Send)
-
-	//http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
-	//http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
-	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
-	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
-	http.HandleFunc("/csv/", parser.Wrap(csvHandler.Handle))
-	http.HandleFunc("/reload", parser.Wrap(config.ReloadHandle))
-
 	http.HandleFunc("/script/", core.runScript)
 
 	if config.DevMode {
@@ -173,7 +96,25 @@ func Serve(config *ServerConfig) error {
 		http.Handle("/pdf.css", &lessHandler{config: config, filename: "less/pdf.less"})
 	}
 
-	routes.Fallthrough(parser.Wrap(fallthroughHandler.Handle))
+	routes.AddRoute("/login", loginViewHandler, "GET")
+	routes.AddRouteFunc("/login", lilo.HandleLogin, "POST")
+	routes.AddRouteFunc("/logout", lilo.HandleLogout)
+	routes.AddRoute("/set_password", setPasswordViewHandler, "GET")
+	routes.AddRouteFunc("/set_password", lilo.HandleSetPassword, "POST")
+
+	routes.AddRoutePathFunc("/report_html/%s/%d", core.Reporter.Handle, "GET")
+	routes.AddRoutePathFunc("/report_pdf/%s/%d", core.PDFHandler.Handle, "GET")
+
+	routes.AddRoutePathFunc("/emailpreview/%s/%d", core.Reporter.Handle, "GET")
+	routes.AddRoutePathFunc("/sendmail/%s/%d/%s/%s", core.MailHandler.Handle)
+
+	routes.AddRoutePathFunc("/csv/%*", core.CSVHandler.Handle)
+
+	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
+	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
+
+	routes.Fallthrough(config.WebRoot)
+
 	http.Handle("/", routes)
 
 	// SERVE!
@@ -204,35 +145,4 @@ func Serve(config *ServerConfig) error {
 	log.Println("=== SHUTDOWN COMPLETE ===")
 
 	return nil
-}
-
-type rawFileHandler struct {
-	filename string
-	config   *ServerConfig
-}
-
-func (h *rawFileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	file, err := os.Open(h.config.WebRoot + "/" + h.filename)
-	if err != nil {
-		fmt.Fprintln(w, err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer file.Close()
-	io.Copy(w, file)
-}
-
-type lessHandler struct {
-	filename string
-	config   *ServerConfig
-}
-
-func (h *lessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("LESS HANDLER")
-	w.Header().Add("Content-Type", "text/css")
-	c := exec.Command("lessc", h.config.WebRoot+"/"+h.filename)
-	c.Stdout = w
-	c.Stderr = os.Stderr
-	c.Run()
 }

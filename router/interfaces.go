@@ -5,13 +5,14 @@ import (
 	"github.com/daemonl/go_gsd/shared"
 	//"github.com/daemonl/go_gsd/torch"
 	"net/http"
+	"strings"
 )
 
 type Router interface {
 	AddRoute(format string, handler shared.IHandler, methods ...string) error
 	AddRouteFunc(format string, handlerFunc func(shared.IRequest) (shared.IResponse, error), methods ...string) error
 	AddRoutePathFunc(format string, handlerPathFunc func(shared.IPathRequest) (shared.IResponse, error), methods ...string) error
-	Fallthrough(func(respWriter http.ResponseWriter, httpRequest *http.Request))
+	Fallthrough(string)
 	ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Request)
 }
 
@@ -47,6 +48,13 @@ func wrapRequest(tr shared.IRequest, route *route) shared.IPathRequest {
 
 func (wr *WrappedRequest) ScanPath(dests ...interface{}) error {
 	_, r := wr.GetRaw()
-	_, err := fmt.Sscanf(r.URL.Path, wr.route.format, dests...)
+
+	url := strings.Replace(r.URL.Path, "/", " ", -1)
+	format := strings.Replace(wr.route.format, "/", " ", -1)
+	_, err := fmt.Sscanf(url, format, dests...)
+	if err != nil {
+		return fmt.Errorf("scanning '%s' into '%s': %s", r.URL.Path, wr.route.format, err.Error())
+	}
+
 	return err
 }

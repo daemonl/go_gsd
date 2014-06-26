@@ -17,6 +17,21 @@ type Parser struct {
 	PublicPatterns         []*regexp.Regexp
 }
 
+func BasicParser(sessionStore shared.ISessionStore, rawPublicPatterns []string) *Parser {
+	parser := &Parser{
+		Store:          sessionStore,
+		PublicPatterns: make([]*regexp.Regexp, len(rawPublicPatterns), len(rawPublicPatterns)),
+	}
+
+	// Insert the regexes for all 'public' urls
+	for i, pattern := range rawPublicPatterns {
+		reg := regexp.MustCompile(pattern)
+		parser.PublicPatterns[i] = reg
+	}
+
+	return parser
+}
+
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
 func (parser *Parser) Wrap(handler func(shared.IRequest)) func(w http.ResponseWriter, r *http.Request) {
 

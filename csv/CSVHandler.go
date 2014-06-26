@@ -1,12 +1,11 @@
 package csv
 
 import (
-	"encoding/csv"
 	"encoding/json"
-	"fmt"
+
 	"github.com/daemonl/databath"
-	"github.com/daemonl/databath/types"
 	"github.com/daemonl/go_gsd/shared"
+
 	"log"
 	"net/url"
 	"strings"
@@ -17,35 +16,24 @@ type CSVHandler struct {
 	Model *databath.Model
 }
 
-func GetCsvHandler(Model *databath.Model) *CSVHandler {
-	fh := CSVHandler{
-		Model: Model,
-	}
-	return &fh
-}
+func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, error) {
 
-func (h *CSVHandler) Handle(request shared.IRequest) {
-
-	var functionName string
 	var queryStringQuery string
 
-	err := request.URLMatch(&functionName, &queryStringQuery)
+	err := request.ScanPath(&queryStringQuery)
 	if err != nil {
-		request.DoError(err)
+		return nil, err
 	}
-	w, _ := request.GetRaw()
 
 	rawQuery := databath.RawQueryConditions{}
 
 	jsonQuery, err := url.QueryUnescape(queryStringQuery)
 	if err != nil {
-		request.DoError(err)
-		return
+		return nil, err
 	}
 	err = json.Unmarshal([]byte(jsonQuery), &rawQuery)
 	if err != nil {
-		request.DoError(err)
-		return
+		return nil, err
 	}
 	var neg1 int64 = -1
 	rawQuery.Limit = &neg1
@@ -53,44 +41,29 @@ func (h *CSVHandler) Handle(request shared.IRequest) {
 
 	qc, err := rawQuery.TranslateToQuery()
 	if err != nil {
-		request.DoError(err)
-		return
+		return nil, err
 	}
 
 	query, err := databath.GetQuery(request.GetContext(), h.Model, qc, false)
 	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
+		return nil, err
 	}
 	sqlString, parameters, err := query.BuildSelect()
 	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
+		return nil, err
 	}
 
 	db, err := request.DB()
 	if err != nil {
-		request.DoError(err)
-		return
+		return nil, err
 	}
 
 	rows, err := query.RunQueryWithResults(db, sqlString, parameters)
 	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
+		return nil, err
 	}
 
 	filename := *rawQuery.Collection + "-" + time.Now().Format("2006-01-02") + ".csv"
-	w.Header().Add("content-type", "text/csv")
-	w.Header().Add("Content-Disposition", "attachment; filename="+filename)
-	csvWriter := csv.NewWriter(w)
-
-	if len(rows) < 0 {
-		return
-	}
 
 	mappedFields, err := query.GetFields()
 
@@ -121,36 +94,15 @@ func (h *CSVHandler) Handle(request shared.IRequest) {
 		}
 
 		colNames = append(colNames, colName)
-
 	}
 
-	csvWriter.Write(colNames)
-
-	// TODO: Type assertions etc are done on each row... this seems rather inefficient.
-
-	for _, row := range rows {
-
-		record := make([]string, len(colNames), len(colNames))
-		for i, colName := range colNames {
-			v, ok := row[colName]
-
-			if ok && v != nil {
-				field, ok := mappedFields[colName]
-				if !ok {
-					log.Printf("No field %s in %#v\n", colName, mappedFields)
-				}
-				switch fieldImpl := field.Impl.(type) {
-				case *types.FieldEnum:
-					record[i] = fieldImpl.Choices[v.(string)]
-				default:
-					record[i] = fmt.Sprintf("%v", v)
-				}
-			} else {
-				record[i] = ""
-			}
-		}
-
-		csvWriter.Write(record)
+	resp := &csvResponse{
+		rows:         rows,
+		filename:     filename,
+		colNames:     colNames,
+		mappedFields: mappedFields,
 	}
-	csvWriter.Flush()
+
+	return resp, nil
+
 }

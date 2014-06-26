@@ -1,38 +1,67 @@
 package view
 
 import (
-	"github.com/daemonl/go_gsd/shared"
-
-	"github.com/daemonl/go_sweetpl"
-	"github.com/russross/blackfriday"
 	"html/template"
-	"io"
 	"log"
-
 	"strings"
+
+	"github.com/daemonl/go_gsd/shared"
+	"github.com/daemonl/go_sweetpl"
+
+	"github.com/russross/blackfriday"
 )
 
-type ViewManager struct {
+type TemplateManager struct {
 	Sweetpl      *sweetpl.SweeTpl
 	TemplateRoot string
 	IncludeRoot  string
 }
 
-func GetViewManager(dir string, IncludeRoot string) *ViewManager {
+func GetTemplateManager(dir string, IncludeRoot string) *TemplateManager {
 	log.Println("Load View Manager. Template Root: " + IncludeRoot)
 	//pattern := filepath.Join(dir, "*.html")
-	viewManager := ViewManager{
+	templateManager := TemplateManager{
 		TemplateRoot: dir,
 		IncludeRoot:  IncludeRoot,
 	}
-	err := viewManager.Reload()
+	err := templateManager.load()
 	if err != nil {
 		panic(err)
 	}
-	return &viewManager
+	return &templateManager
 }
 
-func (vm *ViewManager) Reload() error {
+func (vm *TemplateManager) GetHTMLTemplateWriter(templateName string, session shared.ISession) (*HTMLTemplateWriter, error) {
+	writer := &HTMLTemplateWriter{
+		Session:      session,
+		TemplateName: templateName,
+		Sweetpl:      vm.Sweetpl,
+	}
+	return writer, nil
+}
+
+type simpleTemplateHandler struct {
+	name    string
+	manager *TemplateManager
+}
+
+func (th *simpleTemplateHandler) Handle(request shared.IRequest) (shared.IResponse, error) {
+	writer, err := th.manager.GetHTMLTemplateWriter(th.name, request.Session())
+	if err != nil {
+		return nil, err
+	}
+
+	return writer, nil
+}
+
+func (vm *TemplateManager) GetSimpleTemplateHandler(name string) shared.IHandler {
+	return &simpleTemplateHandler{
+		name:    name,
+		manager: vm,
+	}
+}
+
+func (vm *TemplateManager) load() error {
 
 	htmlFlags := 0
 	htmlFlags |= blackfriday.HTML_USE_XHTML
@@ -79,12 +108,7 @@ func (vm *ViewManager) Reload() error {
 	return nil
 }
 
-func (vm *ViewManager) Render(w io.Writer, name string, data *ViewData) error {
-	log.Printf("Render %s\n", name)
-	err := vm.Sweetpl.Render(w, name, data)
-	return err
-}
-
+/*
 type ViewHandler struct {
 	Manager      *ViewManager
 	TemplateName string
@@ -108,3 +132,4 @@ func (vh *ViewHandler) Handle(r shared.IRequest) (shared.IResponse, error) {
 
 	return &d, nil
 }
+*/

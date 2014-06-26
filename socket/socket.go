@@ -59,6 +59,9 @@ func GetManager(sessionStore shared.ISessionStore) *Manager {
 		OpenSockets:  make([]*OpenSocket, 0, 0),
 	}
 	m.websocketHandler = websocket.Handler(m.listener)
+
+	sessionStore.SetBroadcast(m.Broadcast)
+
 	return &m
 }
 

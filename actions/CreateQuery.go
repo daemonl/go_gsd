@@ -56,7 +56,7 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared
 		Fields:     createRequest.Values,
 	}
 
-	r.Core.DoHooksPreAction(db, actionSummary)
+	r.Core.DoHooksPreAction(db, actionSummary, request.Session())
 
 	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
@@ -84,7 +84,7 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared
 		"object":     createRequest.Values,
 	}
 
-	go r.Core.DoHooksPostAction(db, actionSummary)
+	go r.Core.DoHooksPostAction(db, actionSummary, request.Session())
 	go request.Broadcast("create", createObject)
 	return JSON(result), nil
 }

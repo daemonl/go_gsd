@@ -1,4 +1,4 @@
-package email
+package mailer
 
 import (
 	"bytes"
@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
+	"strings"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
-type Sender struct {
+type Mailer struct {
 	Config *SmtpConfig
-	Auth   *smtp.Auth
 }
 
 type SmtpConfig struct {
@@ -19,16 +21,72 @@ type SmtpConfig struct {
 	ServerPort    string `json:"port"`
 	Username      string `json:"username"`
 	Password      string `json:"password"`
+	DefaultSender string `json:"defaultSender"`
 }
 
-type Email struct {
-	Recipient string
-	Sender    string
-	Subject   string
-	Html      string
+func (s *Mailer) SendSimple(to string, subject string, body string) {
+	email := &shared.Email{
+		Recipient: to,
+		Subject:   subject,
+		HTML:      body,
+		Sender:    s.Config.DefaultSender,
+	}
+	s.Send(email)
 }
 
-func (s *Sender) Send(email *Email) error {
+func dropLine(in *string) (string, error) {
+	log.Println("Drop Line")
+
+	parts := strings.SplitN(*in, "\n", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("Could not extract line")
+	}
+	*in = parts[1]
+
+	return parts[0], nil
+}
+
+func (s *Mailer) SendResponse(response shared.IResponse, recipientsRaw string, notes string) error {
+	mailBuffer := &bytes.Buffer{}
+	response.WriteTo(mailBuffer)
+	html := mailBuffer.String()
+
+	notes = strings.Replace(notes, "\n", "<br/>", -1)
+	html = strings.Replace(html, "--- NOTES HERE ---", notes, 1)
+
+	subject, err := dropLine(&html)
+	if err != nil {
+		return err
+	}
+
+	if recipientsRaw == "#inline" {
+		recipientsRaw, err = dropLine(&html)
+		if err != nil {
+			return err
+		}
+	}
+
+	recipients := strings.Split(recipientsRaw, ";")
+	for _, recipient := range recipients {
+
+		email := &shared.Email{
+			Sender:    s.Config.DefaultSender,
+			Recipient: recipient,
+			Subject:   subject,
+			HTML:      html,
+		}
+
+		err := s.Send(email)
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
+
+}
+
+func (s *Mailer) Send(email *shared.Email) error {
 
 	recipients := make([]string, 1, 1)
 	recipients[0] = email.Recipient
@@ -45,7 +103,7 @@ func (s *Sender) Send(email *Email) error {
 	for k, v := range headers {
 		buf.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 	}
-	buf.WriteString(email.Html)
+	buf.WriteString(email.HTML)
 
 	log.Printf("Dial %s:%s", s.Config.ServerAddress, s.Config.ServerPort)
 
@@ -82,19 +140,6 @@ func (s *Sender) Send(email *Email) error {
 		}
 
 	}
-
-	/*
-		boundary := "f46d043c813270fc6b04c2d223da"
-
-		buf.WriteString("Content-Type: multipart/alternative; boundary=" + boundary + "\n\n")
-		buf.WriteString("--" + boundary + "\n")
-		buf.WriteString("Content-Type: text/plain; charset=utf-8\n\n")
-		docText.WriteTo(buf)
-		buf.WriteString("\n\n--" + boundary + "\n")
-		buf.WriteString("Content-Type: text/html; charset=utf-8\n\n")
-		docHtml.WriteTo(buf)
-		buf.WriteString("--" + boundary + "--\n")
-	*/
 
 	log.Printf("Sender %s", email.Sender)
 	if err = c.Mail(email.Sender); err != nil {

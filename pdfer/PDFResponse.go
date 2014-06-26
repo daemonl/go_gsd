@@ -1,4 +1,4 @@
-package pdf
+package pdfer
 
 import (
 	"bufio"
@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type PDFResponse struct {
 	binary string
-	hTMLIn io.Reader
+	htmlIn shared.IResponse
 }
 
 func (r *PDFResponse) ContentType() string {
@@ -24,9 +26,11 @@ func (r *PDFResponse) ContentType() string {
 func (r *PDFResponse) WriteTo(out io.Writer) error {
 
 	binary := r.binary
-	in := r.hTMLIn
 
-	br := bufio.NewReader(in)
+	bufferedResponse := &bytes.Buffer{}
+	r.htmlIn.WriteTo(bufferedResponse)
+
+	br := bufio.NewReader(bufferedResponse)
 	header := bytes.Buffer{}
 	htmlStart := ([]byte("<"))[0]
 	for {

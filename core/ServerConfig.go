@@ -5,11 +5,16 @@ import (
 	"fmt"
 
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/csv"
 	"github.com/daemonl/go_gsd/dynamic"
-	"github.com/daemonl/go_gsd/email"
-	"github.com/daemonl/go_gsd/pdf"
-	"github.com/daemonl/go_gsd/shared"
+	"github.com/daemonl/go_gsd/hooker"
+	"github.com/daemonl/go_gsd/mailer"
+	"github.com/daemonl/go_gsd/mailhandler"
+	"github.com/daemonl/go_gsd/pdfer"
+	"github.com/daemonl/go_gsd/pdfhandler"
+	"github.com/daemonl/go_gsd/reporter"
 	"github.com/daemonl/go_gsd/view"
+
 	"github.com/daemonl/go_lib/google_auth"
 )
 
@@ -29,49 +34,98 @@ type ServerConfig struct {
 	ScriptDirectory     string   `json:"scriptDirectory"`
 	DevMode             bool
 
-	EmailConfig     *email.EmailHandlerConfig
-	EmailFile       *string           `json:"emailFile"`
-	SmtpConfig      *email.SmtpConfig `json:"smtpConfig"`
-	SessionDumpFile *string           `json:"sessionDumpFile"`
+	ReportFile *string `json:"reportFile"`
+	Reports    map[string]reporter.ReportConfig
 
-	PDFConfig *pdf.PDFHandlerConfig
-	PDFFile   *string `json:"pdfFile"`
+	SmtpConfig      *mailer.SmtpConfig `json:"smtpConfig"`
+	SessionDumpFile *string            `json:"sessionDumpFile"`
+
 	PDFBinary *string `json:"pdfBinary"`
 
 	OAuthConfig *google_auth.OAuthConfig `json:"oauth"`
-
-	ViewManager *view.ViewManager
-}
-
-func (config *ServerConfig) ReloadHandle(request shared.IRequest) {
-	err := config.ViewManager.Reload()
-	if err != nil {
-		request.Writef("Error Loading Views: %s", err.Error())
-		return
-	}
-	request.Writef("Loaded Views")
 }
 
 func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
+
+	core = &GSDCore{}
+
+	//////////////////////
+	// Template Manager //
+	templateManager := view.GetTemplateManager(config.TemplateRoot, config.TemplateIncludeRoot)
+	core.TemplateManager = templateManager
 
 	model, err := databath.ReadModelFromFile(config.ModelFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading model file: %s", err.Error())
 	}
+	core.Model = model
 
-	core = &GSDCore{
-		Model:  model,
-		Config: config,
+	////////////
+	// Mailer //
+	mailer := &mailer.Mailer{
+		Config: config.SmtpConfig,
 	}
+	core.Mailer = mailer
 
-	core.Runner = &dynamic.DynamicRunner{
-		BaseDirectory: core.Config.ScriptDirectory, // "/home/daemonl/schkit/impl/pov/script/",
-		SendMail:      core.SendMail,
+	/////////////
+	// Runner //
+	runner := &dynamic.DynamicRunner{
+		BaseDirectory: config.ScriptDirectory,
+		Mailer:        mailer,
 	}
+	core.Runner = runner
 
-	core.Hooker = &Hooker{
-		Core: core,
+	//////////////
+	// Reporter //
+	reporter := &reporter.Reporter{
+		ViewManager: templateManager,
+		Runner:      runner,
+		Model:       model,
+		Reports:     config.Reports,
 	}
+	core.Reporter = reporter
+
+	///////////
+	// PDFer //
+	pdfer := &pdfer.PDFer{
+		Binary: *config.PDFBinary,
+	}
+	core.PDFer = pdfer
+
+	////////////////
+	// PDFHandler //
+	pdfHandler := &pdfhandler.PDFHandler{
+		Reporter: reporter,
+		PDFer:    pdfer,
+	}
+	core.PDFHandler = pdfHandler
+
+	//////////////////
+	// MailHandler //
+	mailHandler := &mailhandler.MailHandler{
+		Mailer:   mailer,
+		Reporter: reporter,
+	}
+	core.MailHandler = mailHandler
+
+	/////////
+	// CSV //
+	csv := &csv.CSVHandler{
+		Model: model,
+	}
+	core.CSVHandler = csv
+
+	////////////
+	// Hooker //
+	hooker := &hooker.Hooker{
+		Model:    model,
+		Runner:   runner,
+		Reporter: reporter,
+		Mailer:   mailer,
+	}
+	core.Hooker = hooker
+
+	core.Config = config
 
 	db, err := sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
 	if err != nil {

@@ -1,20 +1,27 @@
-package view
+package reporter
 
 import (
+	"fmt"
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/shared"
-
-	"fmt"
+	"github.com/daemonl/go_gsd/view"
 )
 
 type Report struct {
 	Session shared.ISession
-	Config  *TemplateConfig
 	RootID  uint64
-	Core    *TemplateWriter
+	Config  *ReportConfig
+	Core    *Reporter
 }
 
-func (report *Report) PrepareData() (*ViewData, error) {
+type ReportConfig struct {
+	TemplateFile string                                  `json:"templateFile"`
+	Collection   string                                  `json:"collection"`
+	Queries      map[string]*databath.RawQueryConditions `json:"queries"`
+	ScriptName   string                                  `json:"script"`
+}
+
+func (report *Report) PrepareWriter() (*view.HTMLTemplateWriter, error) {
 
 	emailParameters := map[string]interface{}{}
 
@@ -31,9 +38,12 @@ func (report *Report) PrepareData() (*ViewData, error) {
 		Fieldset:   &fieldset,
 	}
 
-	db := report.Core.DB
+	db, err := report.Session.GetDatabaseConnection()
+	if err != nil {
+		return nil, err
+	}
 
-	results, err := report.Core.DoSelect(db, &rawQueryCondition, &context)
+	results, err := report.Core.doSelect(db, &rawQueryCondition, &context)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +58,7 @@ func (report *Report) PrepareData() (*ViewData, error) {
 	}
 
 	for key, qc := range report.Config.Queries {
-		results2, err := report.Core.DoSelect(db, qc, &context)
+		results2, err := report.Core.doSelect(db, qc, &context)
 		if err != nil {
 			return nil, err
 		}
@@ -75,14 +85,14 @@ func (report *Report) PrepareData() (*ViewData, error) {
 		}
 	}
 
-	data := &ViewData{
-		Data:         emailParameters,
-		D:            javascriptData,
-		Root:         report.Core.ViewManager.IncludeRoot,
-		Session:      report.Session,
-		Manager:      report.Core.ViewManager,
-		TemplateName: report.Config.TemplateFile,
+	htmlWriter, err := report.Core.ViewManager.GetHTMLTemplateWriter(report.Config.TemplateFile, report.Session)
+	if err != nil {
+		return nil, err
 	}
 
-	return data, nil
+	htmlWriter.Data = emailParameters
+	htmlWriter.D = javascriptData
+	htmlWriter.Root = report.Core.ViewManager.IncludeRoot
+
+	return htmlWriter, nil
 }

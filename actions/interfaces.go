@@ -20,8 +20,8 @@ type Handler interface {
 }
 
 type Core interface {
-	DoHooksPreAction(db *sql.DB, as *shared.ActionSummary)
-	DoHooksPostAction(db *sql.DB, as *shared.ActionSummary)
+	DoHooksPreAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
+	DoHooksPostAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
 	GetModel() *databath.Model
 	RunDynamic(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error)
 	SendMail(to string, subject string, body string)

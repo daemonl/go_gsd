@@ -12,18 +12,20 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type inMemorySessionStore struct {
-	sessions          map[string]Session
+	sessions          map[string]shared.ISession
 	dumpFile          *string
 	broadcast         func(string, interface{})
-	getDatabaseMethod func(Session) (*sql.DB, error)
+	getDatabaseMethod func(shared.ISession) (*sql.DB, error)
 }
 
-func InMemorySessionStore(dumpFile *string, loadUserById func(uint64) (User, error), getDatabaseMethod func(Session) (*sql.DB, error)) SessionStore {
+func InMemorySessionStore(dumpFile *string, loadUserById func(uint64) (shared.IUser, error), getDatabaseMethod func(shared.ISession) (*sql.DB, error)) shared.ISessionStore {
 	ss := inMemorySessionStore{
-		sessions:          make(map[string]Session),
+		sessions:          make(map[string]shared.ISession),
 		dumpFile:          dumpFile,
 		getDatabaseMethod: getDatabaseMethod,
 	}
@@ -67,7 +69,7 @@ func (ss *inMemorySessionStore) DumpSessions() {
 	}
 }
 
-func (ss *inMemorySessionStore) loadSessions(r io.Reader, loadUser func(uint64) (User, error)) {
+func (ss *inMemorySessionStore) loadSessions(r io.Reader, loadUser func(uint64) (shared.IUser, error)) {
 	lr := bufio.NewReader(r)
 	for {
 		line, err := lr.ReadString('\n')
@@ -104,7 +106,7 @@ func (ss *inMemorySessionStore) SetBroadcast(broadcast func(string, interface{})
 	ss.broadcast = broadcast
 }
 
-func (ss *inMemorySessionStore) GetDatabaseConnectionForSession(session Session) (*sql.DB, error) {
+func (ss *inMemorySessionStore) GetDatabaseConnectionForSession(session shared.ISession) (*sql.DB, error) {
 	return ss.getDatabaseMethod(session)
 }
 
@@ -125,7 +127,7 @@ func (ss *inMemorySessionStore) StartExpiry() {
 	}
 }
 
-func (ss *inMemorySessionStore) NewSession() (Session, error) {
+func (ss *inMemorySessionStore) NewSession() (shared.ISession, error) {
 	randBytes := make([]byte, 128, 128)
 	_, _ = rand.Reader.Read(randBytes)
 	keyString := hex.EncodeToString(randBytes)
@@ -138,7 +140,7 @@ func (ss *inMemorySessionStore) NewSession() (Session, error) {
 	return &session, nil
 }
 
-func (ss *inMemorySessionStore) GetSession(key string) (Session, error) {
+func (ss *inMemorySessionStore) GetSession(key string) (shared.ISession, error) {
 	sess, ok := ss.sessions[key]
 	if !ok {
 		fmt.Printf("Session Not Found: %s\n", key)

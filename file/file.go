@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 	"io"
 	"log"
 	"mime/multipart"
@@ -24,7 +24,7 @@ func GetFileHandler(location string, Model *databath.Model) *FileHandler {
 	}
 	return &fh
 }
-func (h *FileHandler) Upload(request torch.Request) {
+func (h *FileHandler) Upload(request shared.IRequest) {
 
 	var functionName string
 	var fileCollection string
@@ -116,7 +116,7 @@ func (h *FileHandler) Upload(request torch.Request) {
 	`)
 
 }
-func (h *FileHandler) Download(request torch.Request) {
+func (h *FileHandler) Download(request shared.IRequest) {
 
 	var functionName string
 	var fileCollection string
@@ -194,7 +194,7 @@ func (h *FileHandler) Download(request torch.Request) {
 	}
 }
 
-func (h *FileHandler) writeDatabaseEntry(request torch.Request, dbEntry map[string]interface{}, fileCollection string) error {
+func (h *FileHandler) writeDatabaseEntry(request shared.IRequest, dbEntry map[string]interface{}, fileCollection string) error {
 
 	qc := databath.GetMinimalQueryConditions(fileCollection, "form")
 

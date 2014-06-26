@@ -67,16 +67,16 @@ func parseCLI() *core.ServerConfig {
 		config.EmailConfig = &ec
 	}
 
-	if config.PdfFile != nil {
-		log.Printf("Load pdf config from %s\n", *config.PdfFile)
-		var ec pdf.PdfHandlerConfig
+	if config.PDFFile != nil {
+		log.Printf("Load pdf config from %s\n", *config.PDFFile)
+		var ec pdf.PDFHandlerConfig
 		//ec1 := make(map[string]interface{})
-		err := fileNameToObject(*config.PdfFile, &ec)
+		err := fileNameToObject(*config.PDFFile, &ec)
 		if err != nil {
 			panic("Could not load config, Aborting: " + err.Error())
 		}
 
-		config.PdfConfig = &ec
+		config.PDFConfig = &ec
 	}
 	return &config
 }

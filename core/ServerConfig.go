@@ -8,7 +8,7 @@ import (
 	"github.com/daemonl/go_gsd/dynamic"
 	"github.com/daemonl/go_gsd/email"
 	"github.com/daemonl/go_gsd/pdf"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/view"
 	"github.com/daemonl/go_lib/google_auth"
 )
@@ -34,16 +34,16 @@ type ServerConfig struct {
 	SmtpConfig      *email.SmtpConfig `json:"smtpConfig"`
 	SessionDumpFile *string           `json:"sessionDumpFile"`
 
-	PdfConfig *pdf.PDFHandlerConfig
-	PdfFile   *string `json:"pdfFile"`
-	PdfBinary *string `json:"pdfBinary"`
+	PDFConfig *pdf.PDFHandlerConfig
+	PDFFile   *string `json:"pdfFile"`
+	PDFBinary *string `json:"pdfBinary"`
 
 	OAuthConfig *google_auth.OAuthConfig `json:"oauth"`
 
 	ViewManager *view.ViewManager
 }
 
-func (config *ServerConfig) ReloadHandle(request torch.Request) {
+func (config *ServerConfig) ReloadHandle(request shared.IRequest) {
 	err := config.ViewManager.Reload()
 	if err != nil {
 		request.Writef("Error Loading Views: %s", err.Error())

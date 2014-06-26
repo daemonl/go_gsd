@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/daemonl/databath"
 	"github.com/daemonl/databath/types"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 	"log"
 	"net/url"
 	"strings"
@@ -24,7 +24,7 @@ func GetCsvHandler(Model *databath.Model) *CSVHandler {
 	return &fh
 }
 
-func (h *CSVHandler) Handle(request torch.Request) {
+func (h *CSVHandler) Handle(request shared.IRequest) {
 
 	var functionName string
 	var queryStringQuery string

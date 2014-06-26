@@ -1,76 +1,47 @@
 package router
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/daemonl/go_gsd/torch"
-	"io"
+	"github.com/daemonl/go_gsd/shared"
+	//"github.com/daemonl/go_gsd/torch"
 	"net/http"
 )
 
-type Handler interface {
-	Handle(Request) (Response, error)
-}
-
-type Response interface {
-	WriteTo(w io.Writer) error
-	ContentType() string
-	HTTPExtra(http.ResponseWriter)
-}
-
-type Request interface {
-	Cleanup()
-	Session() torch.Session
-	IsLoggedIn() bool
-	ResetSession() error
-	Method() string
-	Redirect(to string)
-	DB() (*sql.DB, error)
-	GetContext() torch.Context
-	URLMatch(dest ...interface{}) error
-	DoError(err error)
-	DoErrorf(format string, parameters ...interface{})
-
-	ScanPath(recievers ...interface{}) error
-
-	GetRaw() (http.ResponseWriter, *http.Request)
-
-	WriteString(content string)
-	Writef(format string, params ...interface{})
-	PostValueString(name string) string
-
-	Broadcast(name string, val interface{})
-
-	Write(bytes []byte) (int, error)
-
-	Logf(string, ...interface{})
-}
-
 type Router interface {
-	AddRoute(format string, handler Handler, methods ...string) error
+	AddRoute(format string, handler shared.IHandler, methods ...string) error
+	AddRouteFunc(format string, handlerFunc func(shared.IRequest) (shared.IResponse, error), methods ...string) error
+	AddRoutePathFunc(format string, handlerPathFunc func(shared.IPathRequest) (shared.IResponse, error), methods ...string) error
 	Fallthrough(func(respWriter http.ResponseWriter, httpRequest *http.Request))
 	ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Request)
 }
 
-type Parser interface {
-	Parse(http.ResponseWriter, *http.Request) (torch.Request, error)
-}
-
+/*
 type TorchHandlerFunc func(torch.Request) (torch.Response, error)
 
 func (f TorchHandlerFunc) Handle(r Request) (Response, error) {
 	return f(torch.Request(r))
 }
 
+type IRequest interface {
+	shared.IRequest
+}
+*/
+
+type handlerFunc func(shared.IRequest) (shared.IResponse, error)
+
+func (fn handlerFunc) Handle(req shared.IRequest) (shared.IResponse, error) {
+	return fn(req)
+}
+
 type WrappedRequest struct {
-	torch.Request
+	shared.IRequest
 	route *route
 }
 
-func wrapRequest(tr torch.Request, route *route) Request {
+func wrapRequest(tr shared.IRequest, route *route) shared.IPathRequest {
 	return &WrappedRequest{
-		Request: tr,
-		route:   route,
+		IRequest: tr,
+		route:    route,
 	}
 }
 

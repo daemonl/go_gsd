@@ -6,8 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/daemonl/go_gsd/actions"
-	"github.com/daemonl/go_gsd/router"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 	"io"
 	"log"
 	"strings"
@@ -19,9 +18,9 @@ var nextUID uint = 0
 type Manager struct {
 	handlers         map[string]Handler
 	websocketHandler websocket.Handler
-	sessionStore     torch.SessionStore
+	sessionStore     shared.ISessionStore
 	OpenSockets      []*OpenSocket
-	GetDatabase      func(torch.Session) (*sql.DB, error)
+	GetDatabase      func(shared.ISession) (*sql.DB, error)
 }
 
 type SocketMessage interface {
@@ -50,10 +49,10 @@ func (ssm *StringSocketMessage) PipeMessage(w io.Writer) {
 
 type Handler interface {
 	RequestDataPlaceholder() interface{}
-	Handle(ac actions.Request, requestObject interface{}) (router.Response, error)
+	Handle(ac actions.Request, requestObject interface{}) (shared.IResponse, error)
 }
 
-func GetManager(sessionStore torch.SessionStore) *Manager {
+func GetManager(sessionStore shared.ISessionStore) *Manager {
 	m := Manager{
 		handlers:     make(map[string]Handler),
 		sessionStore: sessionStore,

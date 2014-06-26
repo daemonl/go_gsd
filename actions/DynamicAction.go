@@ -2,7 +2,7 @@ package actions
 
 import (
 	"fmt"
-	"github.com/daemonl/go_gsd/router"
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type DynamicHandler struct {
@@ -35,7 +35,7 @@ func (q *DynamicHandler) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *DynamicHandler) Handle(request Request, requestData interface{}) (router.Response, error) {
+func (r *DynamicHandler) Handle(request Request, requestData interface{}) (shared.IResponse, error) {
 
 	cqr, ok := requestData.(*dynamicRequest)
 	if !ok {

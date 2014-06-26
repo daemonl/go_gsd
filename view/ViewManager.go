@@ -1,15 +1,14 @@
 package view
 
 import (
-	"github.com/daemonl/go_gsd/router"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
+
 	"github.com/daemonl/go_sweetpl"
 	"github.com/russross/blackfriday"
 	"html/template"
 	"io"
 	"log"
 
-	"net/http"
 	"strings"
 )
 
@@ -93,16 +92,7 @@ type ViewHandler struct {
 	JsData       map[string]interface{}
 }
 
-type ViewData struct {
-	Session      torch.Session
-	Data         interface{}
-	D            map[string]interface{}
-	Root         string
-	TemplateName string
-	Manager      *ViewManager
-}
-
-func (vh *ViewHandler) Handle(r torch.Request) (router.Response, error) {
+func (vh *ViewHandler) Handle(r shared.IRequest) (shared.IResponse, error) {
 	session := r.Session()
 	if session == nil {
 		panic("NILL SESSION")
@@ -118,17 +108,3 @@ func (vh *ViewHandler) Handle(r torch.Request) (router.Response, error) {
 
 	return &d, nil
 }
-
-func (vd *ViewData) ContentType() string {
-	return "text/html"
-}
-
-func (vd *ViewData) WriteTo(w io.Writer) error {
-	err := vd.Manager.Render(w, vd.TemplateName, vd)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	return err
-}
-
-func (vd *ViewData) HTTPExtra(w http.ResponseWriter) {}

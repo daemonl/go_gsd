@@ -2,7 +2,7 @@ package pdf
 
 import (
 	"bytes"
-	"github.com/daemonl/go_gsd/router"
+	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/view"
 
 	"fmt"
@@ -27,7 +27,7 @@ func GetPDFHandler(binary string, handlerConfig *PDFHandlerConfig, templateWrite
 	return &eh, nil
 }
 
-func (h *PDFHandler) GetReport(request router.Request) (*view.Report, error) {
+func (h *PDFHandler) GetReport(request shared.IPathRequest) (*view.Report, error) {
 	reportName := ""
 	var id uint64
 
@@ -49,7 +49,7 @@ func (h *PDFHandler) GetReport(request router.Request) (*view.Report, error) {
 	return r, nil
 }
 
-func (h *PDFHandler) Preview(request router.Request) (router.Response, error) {
+func (h *PDFHandler) Preview(request shared.IPathRequest) (shared.IResponse, error) {
 
 	report, err := h.GetReport(request)
 	if err != nil {
@@ -64,7 +64,7 @@ func (h *PDFHandler) Preview(request router.Request) (router.Response, error) {
 	return viewData, nil
 }
 
-func (h *PDFHandler) GetPDF(request router.Request) (router.Response, error) {
+func (h *PDFHandler) GetPDF(request shared.IPathRequest) (shared.IResponse, error) {
 
 	report, err := h.GetReport(request)
 	if err != nil {

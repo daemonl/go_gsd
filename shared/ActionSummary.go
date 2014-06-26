@@ -1,4 +1,4 @@
-package shared_structs
+package shared
 
 type ActionSummary struct {
 	UserId     uint64

@@ -3,8 +3,7 @@ package actions
 import (
 	"fmt"
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/router"
-	"github.com/daemonl/go_gsd/shared_structs"
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type CreateQuery struct {
@@ -27,7 +26,7 @@ func (q *CreateQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *CreateQuery) Handle(request Request, requestObject interface{}) (router.Response, error) {
+func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared.IResponse, error) {
 	createRequest, ok := requestObject.(*createRequest)
 	if !ok {
 		return nil, fmt.Errorf("Request Type Mismatch")
@@ -49,7 +48,7 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (router
 		return nil, err
 	}
 
-	actionSummary := &shared_structs.ActionSummary{
+	actionSummary := &shared.ActionSummary{
 		UserId:     *session.UserID(),
 		Action:     "create",
 		Collection: createRequest.Collection,

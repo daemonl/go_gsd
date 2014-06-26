@@ -4,20 +4,17 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type basicSession struct {
 	key         *string // Points to the actual key
-	user        User
-	store       SessionStore
-	flash       []FlashMessage
+	user        shared.IUser
+	store       shared.ISessionStore
+	flash       []shared.FlashMessage
 	loginTarget *string
 	lastRequest time.Time
-}
-
-type FlashMessage struct {
-	Severity string
-	Message  string
 }
 
 func (s *basicSession) Key() *string {
@@ -33,7 +30,7 @@ func (s *basicSession) UserID() *uint64 {
 }
 
 func (s *basicSession) AddFlash(severity, format string, parameters ...interface{}) {
-	fm := FlashMessage{
+	fm := shared.FlashMessage{
 		Severity: severity,
 		Message:  fmt.Sprintf(format, parameters...),
 	}
@@ -41,15 +38,15 @@ func (s *basicSession) AddFlash(severity, format string, parameters ...interface
 }
 
 func (s *basicSession) ResetFlash() {
-	s.flash = make([]FlashMessage, 0, 0)
+	s.flash = make([]shared.FlashMessage, 0, 0)
 }
 
-func (s *basicSession) DisplayFlash() []FlashMessage {
+func (s *basicSession) DisplayFlash() []shared.FlashMessage {
 	fm := s.flash
 	s.ResetFlash()
 	return fm
 }
-func (s *basicSession) Flash() []FlashMessage {
+func (s *basicSession) Flash() []shared.FlashMessage {
 	return s.DisplayFlash()
 }
 
@@ -57,11 +54,11 @@ func (s *basicSession) LastRequest() time.Time {
 	return s.lastRequest
 }
 
-func (s *basicSession) User() User {
+func (s *basicSession) User() shared.IUser {
 	return s.user
 }
 
-func (s *basicSession) SetUser(user User) {
+func (s *basicSession) SetUser(user shared.IUser) {
 	s.user = user
 }
 
@@ -73,7 +70,7 @@ func (s *basicSession) UpdateLastRequest() {
 	s.lastRequest = time.Now()
 }
 
-func (s *basicSession) SessionStore() SessionStore {
+func (s *basicSession) SessionStore() shared.ISessionStore {
 	return s.store
 }
 

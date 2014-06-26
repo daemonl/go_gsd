@@ -3,7 +3,7 @@ package actions
 import (
 	"fmt"
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/router"
+	"github.com/daemonl/go_gsd/shared"
 	"strings"
 )
 
@@ -21,7 +21,7 @@ func (q *DeleteQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *DeleteQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
+func (r *DeleteQuery) Handle(request Request, requestData interface{}) (shared.IResponse, error) {
 	deleteRequest, ok := requestData.(*deleteRequest)
 	if !ok {
 		return nil, fmt.Errorf("Request Type Mismatch")

@@ -2,13 +2,13 @@ package view
 
 import (
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 
 	"fmt"
 )
 
 type Report struct {
-	Session torch.Session
+	Session shared.ISession
 	Config  *TemplateConfig
 	RootID  uint64
 	Core    *TemplateWriter
@@ -76,10 +76,12 @@ func (report *Report) PrepareData() (*ViewData, error) {
 	}
 
 	data := &ViewData{
-		Data:    emailParameters,
-		D:       javascriptData,
-		Root:    report.Core.ViewManager.IncludeRoot,
-		Session: report.Session,
+		Data:         emailParameters,
+		D:            javascriptData,
+		Root:         report.Core.ViewManager.IncludeRoot,
+		Session:      report.Session,
+		Manager:      report.Core.ViewManager,
+		TemplateName: report.Config.TemplateFile,
 	}
 
 	return data, nil

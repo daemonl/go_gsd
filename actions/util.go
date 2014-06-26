@@ -2,7 +2,7 @@ package actions
 
 import (
 	"encoding/json"
-	"github.com/daemonl/go_gsd/router"
+	"github.com/daemonl/go_gsd/shared"
 	"io"
 	"net/http"
 )
@@ -33,13 +33,13 @@ type wrappedHandler struct {
 	handler Handler
 }
 
-func AsRouterHandler(h Handler) router.Handler {
+func AsRouterHandler(h Handler) shared.IHandler {
 	return &wrappedHandler{
 		handler: h,
 	}
 }
 
-func (wh *wrappedHandler) Handle(request router.Request) (router.Response, error) {
+func (wh *wrappedHandler) Handle(request shared.IRequest) (shared.IResponse, error) {
 
 	requestData := wh.handler.RequestDataPlaceholder()
 	_, r := request.GetRaw()

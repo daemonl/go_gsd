@@ -7,16 +7,18 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"regexp"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type Parser struct {
-	Store                  SessionStore
-	OpenDatabaseConnection func(session Session) (*sql.DB, error)
+	Store                  shared.ISessionStore
+	OpenDatabaseConnection func(session shared.ISession) (*sql.DB, error)
 	PublicPatterns         []*regexp.Regexp
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
-func (parser *Parser) Wrap(handler func(Request)) func(w http.ResponseWriter, r *http.Request) {
+func (parser *Parser) Wrap(handler func(shared.IRequest)) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -61,9 +63,9 @@ func (parser *Parser) Wrap(handler func(Request)) func(w http.ResponseWriter, r 
 // Ideally the methods should be registered separately, but that requires taking over more of the default
 // functionality in httpRequestHandler which is not the plan at this stage. - These are Helpers, not a framework.
 // (Who am I kidding, I love building frameworks)
-func (parser *Parser) WrapSplit(handlers ...func(Request)) func(w http.ResponseWriter, r *http.Request) {
+func (parser *Parser) WrapSplit(handlers ...func(shared.IRequest)) func(w http.ResponseWriter, r *http.Request) {
 	methods := []string{"GET", "POST", "PUT", "DELETE"}
-	return parser.Wrap(func(request Request) {
+	return parser.Wrap(func(request shared.IRequest) {
 		for i, m := range methods {
 			if request.Method() == m {
 				if len(handlers) > i && handlers[i] != nil {
@@ -80,7 +82,7 @@ func (parser *Parser) WrapSplit(handlers ...func(Request)) func(w http.ResponseW
 // ParseRequest is a utility usually used internally to give a Request object to a standard http request
 // Exported for better flexibility
 // ParseRequest opens a database session for request.DB(), It will need to be closed...
-func (parser *Parser) Parse(w http.ResponseWriter, r *http.Request) (Request, error) {
+func (parser *Parser) Parse(w http.ResponseWriter, r *http.Request) (shared.IRequest, error) {
 	request := basicRequest{
 		writer: w,
 		raw:    r,

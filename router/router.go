@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/daemonl/go_gsd/shared"
 	"log"
 	"net/http"
 	"regexp"
@@ -8,14 +9,14 @@ import (
 )
 
 type router struct {
-	routes             []route
-	parser             Parser
+	routes             []*route
+	parser             shared.IParser
 	fallthroughHandler func(respWriter http.ResponseWriter, httpRequest *http.Request)
 }
 
-func GetRouter(p Parser) Router {
+func GetRouter(p shared.IParser) Router {
 	r := &router{}
-	r.routes = make([]route, 0, 0)
+	r.routes = make([]*route, 0, 0)
 	r.parser = p
 	return r
 }
@@ -23,8 +24,16 @@ func GetRouter(p Parser) Router {
 // AddRoute takes a format string as per the fmt and links it to a handler.
 // The format string will be converted to a regular expression, currently only for %d and %s
 // If any methods are specified, this path only applied to that method, default is all
-func (r *router) AddRoute(format string, handler Handler, methods ...string) error {
+func (r *router) AddRoute(format string, handler shared.IHandler, methods ...string) error {
+	route, err := r.getRoute(format, handler, methods...)
+	if err != nil {
+		return err
+	}
+	r.routes = append(r.routes, route)
+	return nil
+}
 
+func (r *router) getRoute(format string, handler shared.IHandler, methods ...string) (*route, error) {
 	// Step 1, convert to a regexp.
 	reStr := format
 	reStr = strings.Replace(reStr, "%d", "[0-9]+", -1)
@@ -32,21 +41,39 @@ func (r *router) AddRoute(format string, handler Handler, methods ...string) err
 
 	re, err := regexp.Compile("^" + reStr + "$")
 	if err != nil {
-		panic(err)
-		return err
+		return nil, err
 	}
 
 	methodsUpper := make([]string, len(methods), len(methods))
 	for i, m := range methods {
 		methodsUpper[i] = strings.ToUpper(m)
 	}
-	nr := route{
+	nr := &route{
 		format:  format,
 		re:      re,
 		handler: handler,
 		methods: methodsUpper,
 	}
-	r.routes = append(r.routes, nr)
+	return nr, nil
+
+}
+
+func (r *router) AddRouteFunc(format string, hf func(shared.IRequest) (shared.IResponse, error), methods ...string) error {
+	handler := handlerFunc(hf)
+	return r.AddRoute(format, handler, methods...)
+}
+
+func (r *router) AddRoutePathFunc(format string, pathRequestFunc func(shared.IPathRequest) (shared.IResponse, error), methods ...string) error {
+	route, err := r.getRoute(format, nil, methods...)
+	if err != nil {
+		return err
+	}
+	normalRequestFunc := func(req shared.IRequest) (shared.IResponse, error) {
+		pathRequest := wrapRequest(req, route)
+		return pathRequestFunc(pathRequest)
+	}
+	handler := handlerFunc(normalRequestFunc)
+	route.handler = handler
 	return nil
 }
 
@@ -59,12 +86,12 @@ searching:
 	for _, p := range r.routes {
 		if p.re.MatchString(pathString) {
 			if len(p.methods) < 1 {
-				found = &p
+				found = p
 				break searching
 			}
 			for _, m := range p.methods {
 				if m == method {
-					found = &p
+					found = p
 					break searching
 				}
 

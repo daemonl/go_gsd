@@ -3,8 +3,7 @@ package actions
 import (
 	"fmt"
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/router"
-	"github.com/daemonl/go_gsd/shared_structs"
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type UpdateQuery struct {
@@ -21,7 +20,7 @@ func (q *UpdateQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *UpdateQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
+func (r *UpdateQuery) Handle(request Request, requestData interface{}) (shared.IResponse, error) {
 	updateRequest, ok := requestData.(*updateRequest)
 	if !ok {
 		return nil, fmt.Errorf("Request type mismatch")
@@ -43,7 +42,7 @@ func (r *UpdateQuery) Handle(request Request, requestData interface{}) (router.R
 		return nil, err
 	}
 	if updateRequest.Conditions.Pk != nil {
-		actionSummary := &shared_structs.ActionSummary{
+		actionSummary := &shared.ActionSummary{
 			UserId:     *session.UserID(),
 			Action:     "update",
 			Collection: *updateRequest.Conditions.Collection,
@@ -70,7 +69,7 @@ func (r *UpdateQuery) Handle(request Request, requestData interface{}) (router.R
 
 	go request.Broadcast("update", updateObject)
 	if updateRequest.Conditions.Pk != nil {
-		actionSummary := &shared_structs.ActionSummary{
+		actionSummary := &shared.ActionSummary{
 			UserId:     *session.UserID(),
 			Action:     "update",
 			Collection: *updateRequest.Conditions.Collection,

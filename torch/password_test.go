@@ -8,7 +8,7 @@ func TestEndToEnd(t *testing.T) {
 	plaintext := "abcd1234"
 
 	hashed := HashPassword(plaintext)
-	u := User{
+	u := shared.IUser{
 		password: hashed,
 	}
 	if len(hashed) < 260 {
@@ -48,7 +48,7 @@ func TestVariousStrings(t *testing.T) {
 		if len(hashed1) < 260 {
 			t.Errorf("Insufficient hash length for '%s'", plaintext)
 		}
-		u := User{password: hashed1}
+		u := shared.IUser{password: hashed1}
 		m, err := u.CheckPassword(plaintext)
 		if !m || err != nil {
 			t.Errorf("Check Password failed for '%s'", plaintext)

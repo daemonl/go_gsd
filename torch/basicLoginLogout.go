@@ -4,38 +4,40 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type basicLoginLogout struct {
 	db *sql.DB
 }
 
-func GetBasicLoginLogout(db *sql.DB) LoginLogout {
+func GetBasicLoginLogout(db *sql.DB) shared.ILoginLogout {
 	lilo := &basicLoginLogout{
 		db: db,
 	}
 	return lilo
 }
 
-func (lilo *basicLoginLogout) HandleLogout(request Request) (Response, error) {
-	//request.Session.User = nil
+func (lilo *basicLoginLogout) HandleLogout(request shared.IRequest) (shared.IResponse, error) {
+	//request.Session.shared.IUser = nil
 	request.ResetSession()
 	request.Session().AddFlash("success", "Logged Out")
 	return getRedirectResponse("/")
 }
 
-func (lilo *basicLoginLogout) HandleLogin(request Request) (Response, error) {
+func (lilo *basicLoginLogout) HandleLogin(request shared.IRequest) (shared.IResponse, error) {
 	username := request.PostValueString("username")
 	password := request.PostValueString("password")
 	lilo.doLogin(request, false, username, password)
 	return nil, nil
 }
 
-func (lilo *basicLoginLogout) ForceLogin(request Request, email string) {
+func (lilo *basicLoginLogout) ForceLogin(request shared.IRequest, email string) {
 	lilo.doLogin(request, true, email, "")
 }
 
-func (lilo *basicLoginLogout) LoadUserById(id uint64) (User, error) {
+func (lilo *basicLoginLogout) LoadUserById(id uint64) (shared.IUser, error) {
 	rows, err := lilo.db.Query(`SELECT id, username, password, access, set_on_next_login FROM staff WHERE id = ?`, id)
 	if err != nil {
 		return nil, err
@@ -49,7 +51,7 @@ func (lilo *basicLoginLogout) LoadUserById(id uint64) (User, error) {
 	return user, nil
 }
 
-func (lilo *basicLoginLogout) doLogin(request Request, noPassword bool, username string, password string) {
+func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, username string, password string) {
 
 	doError := func(verboseMessage string, err error) {
 		log.Printf("Issue loggin in (not error): %s, U:%s", verboseMessage, username)
@@ -119,8 +121,8 @@ func (lilo *basicLoginLogout) doLogin(request Request, noPassword bool, username
 	log.Printf("Done Check Password")
 }
 
-func (lilo *basicLoginLogout) HandleSetPassword(r Request) (Response, error) {
-	doErr := func(err error) (Response, error) {
+func (lilo *basicLoginLogout) HandleSetPassword(r shared.IRequest) (shared.IResponse, error) {
+	doErr := func(err error) (shared.IResponse, error) {
 		log.Println(err)
 		r.Session().AddFlash("error", "Something went wrong...")
 		return getRedirectResponse("/set_password")
@@ -137,7 +139,7 @@ func (lilo *basicLoginLogout) HandleSetPassword(r Request) (Response, error) {
 
 	if len(currentPassword) < 1 {
 		// Is user exempt?
-		//if !r.Session().User().SetOnNextLogin {
+		//if !r.Session().shared.IUser().SetOnNextLogin {
 		//	r.Session.AddFlash("error", "Incorrect current password")
 		//	r.Redirect("/set_password")
 		//	return

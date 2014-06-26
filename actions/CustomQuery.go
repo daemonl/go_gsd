@@ -2,7 +2,7 @@ package actions
 
 import (
 	"fmt"
-	"github.com/daemonl/go_gsd/router"
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type CustomQuery struct {
@@ -19,7 +19,7 @@ func (q *CustomQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *CustomQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
+func (r *CustomQuery) Handle(request Request, requestData interface{}) (shared.IResponse, error) {
 	cqr, ok := requestData.(*customQueryRequest)
 	if !ok {
 		return nil, fmt.Errorf("Request Type Mismatch")

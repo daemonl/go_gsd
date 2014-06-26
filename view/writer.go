@@ -43,12 +43,3 @@ func (h *TemplateWriter) DoSelect(db *sql.DB, rawQueryConditions *databath.RawQu
 	return allRows, nil
 
 }
-
-/*
-	r := &Report{
-		Session: session,
-		Config:  templateConfig,
-		RootID:  rootId,
-	}
-
-*/

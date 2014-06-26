@@ -3,7 +3,7 @@ package actions
 import (
 	"fmt"
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/router"
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type SelectQuery struct {
@@ -15,7 +15,7 @@ func (q *SelectQuery) RequestDataPlaceholder() interface{} {
 	return &r
 }
 
-func (r *SelectQuery) Handle(request Request, requestData interface{}) (router.Response, error) {
+func (r *SelectQuery) Handle(request Request, requestData interface{}) (shared.IResponse, error) {
 
 	rawQueryCondition, ok := requestData.(*databath.RawQueryConditions)
 	if !ok {

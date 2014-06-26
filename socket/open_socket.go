@@ -4,12 +4,12 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"database/sql"
 	"encoding/json"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 	"log"
 )
 
 type OpenSocket struct {
-	session torch.Session
+	session shared.ISession
 	ws      *websocket.Conn
 	Sender  chan SocketMessage
 	Closer  chan bool
@@ -85,13 +85,13 @@ func (os *OpenSocket) SendError(responseId string, err error) {
 	log.Printf("S:%d SEND ERROR %s\n", os.UID, responseId)
 	os.Sender <- &m
 }
-func (os *OpenSocket) Session() torch.Session {
+func (os *OpenSocket) Session() shared.ISession {
 	return os.session
 }
 func (os *OpenSocket) Broadcast(functionName string, object interface{}) {
 	os.Manager.Broadcast(functionName, object)
 }
 
-func (os *OpenSocket) GetContext() torch.Context {
+func (os *OpenSocket) GetContext() shared.IContext {
 	return os.Session().User().GetContext()
 }

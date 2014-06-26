@@ -18,6 +18,7 @@ import (
 	"github.com/daemonl/go_gsd/file"
 	"github.com/daemonl/go_gsd/pdf"
 	"github.com/daemonl/go_gsd/router"
+	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
 	"github.com/daemonl/go_gsd/view"
@@ -26,7 +27,7 @@ import (
 
 var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
 
-func signupHandle(request torch.Request) {
+func signupHandle(request shared.IRequest) {
 	//username := request.PostValueString("username")
 	password := request.PostValueString("password")
 	hashStore := torch.HashPassword(password)
@@ -123,7 +124,7 @@ func Serve(config *ServerConfig) error {
 	}
 	core.Email = emailHandler
 
-	pdfHandler, err := pdf.GetPDFHandler(*config.PdfBinary, config.PdfConfig, templateWriter)
+	pdfHandler, err := pdf.GetPDFHandler(*config.PDFBinary, config.PDFConfig, templateWriter)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -145,13 +146,16 @@ func Serve(config *ServerConfig) error {
 	http.Handle("/socket", socketManager.GetListener())
 
 	routes.AddRoute("/login", loginViewHandler, "GET")
-	routes.AddRoute("/login", router.TorchHandlerFunc(lilo.HandleLogin), "POST")
-	routes.AddRoute("/logout", router.TorchHandlerFunc(lilo.HandleLogout))
+	routes.AddRouteFunc("/login", lilo.HandleLogin, "POST")
+	routes.AddRouteFunc("/logout", lilo.HandleLogout)
 	routes.AddRoute("/set_password", setPasswordViewHandler, "GET")
-	routes.AddRoute("/set_password", router.TorchHandlerFunc(lilo.HandleSetPassword), "POST")
+	routes.AddRouteFunc("/set_password", lilo.HandleSetPassword, "POST")
 
-	routes.AddRoute("/report_html/%s/%d", router.HandlerFunc(pdfHandler.Preview))
-	routes.AddRoute("/report_pdf/%s/%d", router.HandleFunc(pdfHandler.GetPdf))
+	routes.AddRoutePathFunc("/report_html/%s/%d", pdfHandler.Preview)
+	routes.AddRoutePathFunc("/report_pdf/%s/%d", pdfHandler.GetPDF)
+
+	routes.AddRoutePathFunc("/emailpreview/", emailHandler.Preview)
+	routes.AddRoutePathFunc("/sendmail/", emailHandler.Send)
 
 	//http.HandleFunc("/report_html/", parser.Wrap(pdfHandler.Preview))
 	//http.HandleFunc("/report_pdf/", parser.Wrap(pdfHandler.GetPdf))
@@ -159,8 +163,6 @@ func Serve(config *ServerConfig) error {
 	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
 	http.HandleFunc("/csv/", parser.Wrap(csvHandler.Handle))
 	http.HandleFunc("/reload", parser.Wrap(config.ReloadHandle))
-	http.HandleFunc("/emailpreview/", parser.Wrap(emailHandler.Preview))
-	http.HandleFunc("/sendmail/", parser.Wrap(emailHandler.Send))
 
 	http.HandleFunc("/script/", core.runScript)
 

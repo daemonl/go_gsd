@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 	"net/http"
 )
 
@@ -19,7 +19,7 @@ func GetFallthroughHandler(config *ServerConfig) *FallthroughHandler {
 	return &h
 
 }
-func (h *FallthroughHandler) Handle(request torch.Request) {
+func (h *FallthroughHandler) Handle(request shared.IRequest) {
 	_, r := request.GetRaw()
 	if r.URL.Path == "/" {
 		request.Redirect("/app.html")

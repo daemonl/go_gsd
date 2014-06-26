@@ -1,6 +1,8 @@
 package torch
 
-import ()
+import (
+	"github.com/daemonl/go_gsd/shared"
+)
 
 type basicUser struct {
 	id             uint64
@@ -14,7 +16,7 @@ func (u *basicUser) ID() uint64 {
 	return u.id
 }
 
-func (u *basicUser) GetContext() Context {
+func (u *basicUser) GetContext() shared.IContext {
 
 	context := &mapContext{
 		IsApplication:   false,

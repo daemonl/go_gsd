@@ -2,11 +2,6 @@ package torch
 
 import ()
 
-type Context interface {
-	GetValueFor(string) interface{}
-	GetUserLevel() (isApplication bool, userAccessLevel uint64)
-}
-
 type mapContext struct {
 	IsApplication   bool
 	UserAccessLevel uint64

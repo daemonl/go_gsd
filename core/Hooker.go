@@ -3,7 +3,7 @@ package core
 import (
 	"database/sql"
 	"fmt"
-	"github.com/daemonl/go_gsd/shared_structs"
+	"github.com/daemonl/go_gsd/shared"
 	"log"
 	"time"
 )
@@ -12,7 +12,7 @@ type Hooker struct {
 	Core *GSDCore
 }
 
-func (h *Hooker) DoPreHooks(db *sql.DB, as *shared_structs.ActionSummary) {
+func (h *Hooker) DoPreHooks(db *sql.DB, as *shared.ActionSummary) {
 
 	model := h.Core.Model
 	collection := model.Collections[as.Collection]
@@ -48,7 +48,7 @@ func (h *Hooker) DoPreHooks(db *sql.DB, as *shared_structs.ActionSummary) {
 
 	}
 }
-func (h *Hooker) DoPostHooks(db *sql.DB, as *shared_structs.ActionSummary) {
+func (h *Hooker) DoPostHooks(db *sql.DB, as *shared.ActionSummary) {
 	go h.WriteHistory(db, as)
 
 	log.Println("PROCESS POST HOOKS")
@@ -126,6 +126,7 @@ func (h *Hooker) DoPostHooks(db *sql.DB, as *shared_structs.ActionSummary) {
 
 			//hook.Email.Template, as.Pk,
 			//viewData :=
+			log.Printf("TPL: %s\n", hook.Email.Template)
 			report, err := h.Core.Email.GetReport(hook.Email.Template, as.Pk, nil)
 			if err != nil {
 				log.Println(err.Error())
@@ -144,7 +145,7 @@ func (h *Hooker) DoPostHooks(db *sql.DB, as *shared_structs.ActionSummary) {
 	}
 }
 
-func (h *Hooker) WriteHistory(db *sql.DB, as *shared_structs.ActionSummary) {
+func (h *Hooker) WriteHistory(db *sql.DB, as *shared.ActionSummary) {
 	//, userId uint64, action string, collectionName string, entityId uint64) {
 
 	identity, _ := h.Core.Model.GetIdentityString(db, as.Collection, as.Pk)

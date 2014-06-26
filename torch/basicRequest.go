@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/daemonl/go_gsd/shared"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,7 +15,7 @@ type basicRequest struct {
 	writer  http.ResponseWriter
 	raw     *http.Request
 	db      *sql.DB
-	session Session
+	session shared.ISession
 }
 
 func (r *basicRequest) DB() (*sql.DB, error) {
@@ -36,7 +37,7 @@ func (r *basicRequest) Cleanup() {
 
 }
 
-func (r *basicRequest) Session() Session {
+func (r *basicRequest) Session() shared.ISession {
 	return r.session
 }
 
@@ -54,7 +55,7 @@ func (r *basicRequest) GetWriter() http.ResponseWriter {
 	return r.writer
 }
 
-func (r *basicRequest) GetContext() Context {
+func (r *basicRequest) GetContext() shared.IContext {
 	if r.session == nil {
 		return nil
 	}
@@ -146,7 +147,7 @@ func (request *basicRequest) ResetSession() error {
 	return nil
 }
 
-func (request *basicRequest) SetSession(session Session) {
+func (request *basicRequest) SetSession(session shared.ISession) {
 	request.session = session
 	c := http.Cookie{Name: "gsd_session", Path: "/", MaxAge: 86400, Value: *request.session.Key()}
 	request.writer.Header().Add("Set-Cookie", c.String())

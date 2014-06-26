@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/router"
-	"github.com/daemonl/go_gsd/torch"
+	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/view"
 	"log"
 	"strings"
@@ -46,23 +45,25 @@ func GetEmailHandler(smtpConfig *SmtpConfig, handlerConfig *EmailHandlerConfig, 
 	return &eh, nil
 }
 
-func (h *EmailHandler) GetReport(reportName string, rootID uint64, session torch.Session) (*view.Report, error) {
+func (h *EmailHandler) GetReport(reportName string, rootID uint64, session shared.ISession) (*view.Report, error) {
 
 	reportConfig, ok := h.HandlerConfig.Templates[reportName]
 	if !ok {
 		return nil, fmt.Errorf("Report %s not found", reportName)
 	}
+	log.Println("I HAVE A REPORT NAME: " + reportConfig.TemplateFile)
 
 	r := &view.Report{
 		Session: session,
 		Config:  &reportConfig,
 		RootID:  rootID,
+		Core:    h.TemplateWriter,
 	}
 
 	return r, nil
 }
 
-func (h *EmailHandler) Preview(request router.Request) (router.Response, error) {
+func (h *EmailHandler) Preview(request shared.IPathRequest) (shared.IResponse, error) {
 
 	reportName := ""
 	var id uint64
@@ -85,7 +86,7 @@ func (h *EmailHandler) Preview(request router.Request) (router.Response, error) 
 	return viewData, nil
 }
 
-func (h *EmailHandler) Send(request router.Request) (router.Response, error) {
+func (h *EmailHandler) Send(request shared.IPathRequest) (shared.IResponse, error) {
 
 	emailName := ""
 	var id uint64

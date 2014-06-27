@@ -5,6 +5,7 @@ import (
 	"github.com/daemonl/go_gsd/shared"
 	//"github.com/daemonl/go_gsd/torch"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -49,9 +50,19 @@ func wrapRequest(tr shared.IRequest, route *route) shared.IPathRequest {
 func (wr *WrappedRequest) ScanPath(dests ...interface{}) error {
 	_, r := wr.GetRaw()
 
-	url := strings.Replace(r.URL.Path, "/", " ", -1)
+	uri := strings.Replace(r.URL.RequestURI(), "/", " ", -1)
 	format := strings.Replace(wr.route.format, "/", " ", -1)
-	_, err := fmt.Sscanf(url, format, dests...)
+	_, err := fmt.Sscanf(uri, format, dests...)
+	for _, d := range dests {
+		switch d := d.(type) {
+		case *string:
+			newVal, err := url.QueryUnescape(*d)
+			if err != nil {
+				return err
+			}
+			*d = newVal
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("scanning '%s' into '%s': %s", r.URL.Path, wr.route.format, err.Error())
 	}

@@ -49,10 +49,8 @@ func (r *router) Fallthrough(root string) {
 func (r *router) getRoute(format string, handler shared.IHandler, methods ...string) (*route, error) {
 	// Step 1, convert to a regexp.
 	reStr := format
-	reStr = strings.Replace(reStr, "%d", "[0-9]+", -1)
-	reStr = strings.Replace(reStr, "%s", `[0-9A-Za-z_]+`, -1)
-	reStr = strings.Replace(reStr, "%*", `.*`, -1)
-	format = strings.Replace(format, "%*", "%s", -1)
+	reStr = strings.Replace(reStr, "%d", "([0-9]+)", -1)
+	reStr = strings.Replace(reStr, "%s", `([^/]+)`, -1)
 	//log.Printf("%s -> %s\n", format, reStr)
 
 	re, err := regexp.Compile("^" + reStr + "$")
@@ -139,13 +137,14 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 
 	if path == nil {
 		isPublicPath := false
+		uri := httpRequest.URL.RequestURI()
 		for _, p := range r.publicPatterns {
-			if p.MatchString(httpRequest.URL.Path) {
+			if p.MatchString(uri) {
 				isPublicPath = true
 				break
 			}
 		}
-		log.Printf("Path '%s %s' did not match any\n", httpRequest.Method, httpRequest.URL.Path)
+		log.Printf("Path '%s %s' did not match any\n", httpRequest.Method, uri)
 		if isPublicPath || req.IsLoggedIn() {
 			r.fallthroughHandler(respWriter, httpRequest)
 		} else {

@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/daemonl/go_gsd/core"
-
 	"github.com/daemonl/go_gsd/reporter"
 )
 

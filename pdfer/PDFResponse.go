@@ -28,15 +28,20 @@ func (r *PDFResponse) WriteTo(out io.Writer) error {
 	binary := r.binary
 
 	bufferedResponse := &bytes.Buffer{}
-	r.htmlIn.WriteTo(bufferedResponse)
+	err := r.htmlIn.WriteTo(bufferedResponse)
+	if err != nil {
+		return fmt.Errorf("writing PDF response: %s", err.Error())
+	}
 
 	br := bufio.NewReader(bufferedResponse)
+
 	header := bytes.Buffer{}
 	htmlStart := ([]byte("<"))[0]
 	for {
 		b, err := br.ReadByte()
 		if err != nil {
 			log.Printf("Error reading pdf header: %s\n", err)
+			log.Printf("HEADER: %s\n", header.String())
 			break
 		}
 		if b == htmlStart {
@@ -54,11 +59,15 @@ func (r *PDFResponse) WriteTo(out io.Writer) error {
 	for {
 		line, err := headerReader.ReadString('\n')
 		if err != nil {
-			log.Printf("Error reading pdf header: %s\n", err)
+			log.Printf("Error parsing pdf header: %s\n", err)
 			break
 		}
 		//line = line[:len(line)-1]
 		log.Println(line)
+		if !strings.HasPrefix(line, "-") {
+			log.Printf("Discarding non flag line: %s\n", line)
+			break
+		}
 		parts := strings.SplitN(line, " ", 2)
 		parameters = append(parameters, strings.TrimSpace(parts[0]))
 		if len(parts) == 2 {
@@ -74,7 +83,7 @@ func (r *PDFResponse) WriteTo(out io.Writer) error {
 	cmd.Stdin = br
 	cmd.Stderr = &outErr
 	cmd.Stdout = out
-	err := cmd.Run()
+	err = cmd.Run()
 
 	ooString := outErr.String()
 	if len(ooString) > 0 {

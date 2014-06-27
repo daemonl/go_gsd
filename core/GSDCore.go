@@ -6,7 +6,6 @@ import (
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/components"
 	"github.com/daemonl/go_gsd/shared"
-
 	"github.com/daemonl/go_gsd/view"
 )
 

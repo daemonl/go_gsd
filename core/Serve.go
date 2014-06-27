@@ -9,9 +9,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/daemonl/databath/sync"
 	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/file"
+	"github.com/daemonl/go_gsd/minihandlers"
 	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
@@ -19,20 +19,6 @@ import (
 )
 
 var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
-
-func Sync(config *ServerConfig, force bool) error {
-	core, err := config.GetCore()
-	if err != nil {
-		return err
-	}
-	db, err := core.OpenDatabaseConnection(nil)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	sync.SyncDb(db, core.GetModel(), force)
-	return nil
-}
 
 // Serve starts up a http server with all of the glorious configuration options
 func Serve(config *ServerConfig) error {
@@ -91,9 +77,9 @@ func Serve(config *ServerConfig) error {
 
 	if config.DevMode {
 		log.Println("---DEV MODE---")
-		http.Handle("/app.html", &rawFileHandler{config: config, filename: "app_dev.html"})
-		http.Handle("/main.css", &lessHandler{config: config, filename: "less/main.less"})
-		http.Handle("/pdf.css", &lessHandler{config: config, filename: "less/pdf.less"})
+		http.Handle("/app.html", &minihandlers.RawFileHandler{WebRoot: config.WebRoot, Filename: "app_dev.html"})
+		http.Handle("/main.css", &minihandlers.LessHandler{WebRoot: config.WebRoot, Filename: "less/main.less"})
+		http.Handle("/pdf.css", &minihandlers.LessHandler{WebRoot: config.WebRoot, Filename: "less/pdf.less"})
 	}
 
 	routes.AddRoute("/login", loginViewHandler, "GET")
@@ -108,7 +94,7 @@ func Serve(config *ServerConfig) error {
 	routes.AddRoutePathFunc("/emailpreview/%s/%d", core.Reporter.Handle, "GET")
 	routes.AddRoutePathFunc("/sendmail/%s/%d/%s/%s", core.MailHandler.Handle)
 
-	routes.AddRoutePathFunc("/csv/%*", core.CSVHandler.Handle)
+	routes.AddRoutePathFunc("/csv/%s", core.CSVHandler.Handle)
 
 	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
 	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))

@@ -9,5 +9,6 @@ type ISessionStore interface {
 	NewSession() (ISession, error)
 	DumpSessions()
 	SetBroadcast(func(string, interface{}))
+	Broadcast(string, interface{})
 	GetDatabaseConnectionForSession(ISession) (*sql.DB, error)
 }

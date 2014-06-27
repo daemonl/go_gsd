@@ -63,7 +63,7 @@ func (s *basicSession) SetUser(user shared.IUser) {
 }
 
 func (s *basicSession) Broadcast(name string, val interface{}) {
-
+	s.store.Broadcast(name, val)
 }
 
 func (s *basicSession) UpdateLastRequest() {

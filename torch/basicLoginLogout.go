@@ -21,6 +21,7 @@ func GetBasicLoginLogout(db *sql.DB) shared.ILoginLogout {
 
 func (lilo *basicLoginLogout) HandleLogout(request shared.IRequest) (shared.IResponse, error) {
 	//request.Session.shared.IUser = nil
+	log.Println("LOGOUT")
 	request.ResetSession()
 	request.Session().AddFlash("success", "Logged Out")
 	return getRedirectResponse("/")

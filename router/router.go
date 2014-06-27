@@ -124,6 +124,8 @@ searching:
 
 func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Request) {
 
+	log.Printf("%s %s\n", httpRequest.Method, httpRequest.URL.RequestURI())
+
 	var err error
 
 	path := r.getPathMatching(httpRequest.URL.Path, httpRequest.Method)
@@ -135,7 +137,7 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 		return
 	}
 
-	if path == nil {
+	if !req.IsLoggedIn() {
 		isPublicPath := false
 		uri := httpRequest.URL.RequestURI()
 		for _, p := range r.publicPatterns {
@@ -144,14 +146,18 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 				break
 			}
 		}
-		log.Printf("Path '%s %s' did not match any\n", httpRequest.Method, uri)
-		if isPublicPath || req.IsLoggedIn() {
-			r.fallthroughHandler(respWriter, httpRequest)
-		} else {
+		if !isPublicPath {
+			log.Printf("Path '%s %s' did not match any\n", httpRequest.Method, uri)
 			http.Redirect(respWriter, httpRequest, "/login", http.StatusTemporaryRedirect)
+			return
+
 		}
-		//
-		//http.NotFound(respWriter, httpRequest)
+
+	}
+
+	if path == nil {
+		log.Println("NO Path")
+		r.fallthroughHandler(respWriter, httpRequest)
 		return
 	}
 
@@ -174,6 +180,8 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 
 	contentType := res.ContentType()
 	respWriter.Header().Add("Content-Type", contentType)
+
+	res.HTTPExtra(respWriter)
 
 	err = res.WriteTo(respWriter)
 	if err != nil {

@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type RawFileHandler struct {
@@ -12,14 +14,15 @@ type RawFileHandler struct {
 	WebRoot  string
 }
 
-func (h *RawFileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
+func (h *RawFileHandler) Handle(req shared.IRequest) (shared.IResponse, error) {
+	w, _ := req.GetRaw()
 	file, err := os.Open(h.WebRoot + "/" + h.Filename)
 	if err != nil {
 		fmt.Fprintln(w, err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, nil
 	}
 	defer file.Close()
 	io.Copy(w, file)
+	return nil, nil
 }

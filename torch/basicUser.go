@@ -32,6 +32,10 @@ func (u *basicUser) Access() uint64 {
 	return u.access
 }
 
+func (u *basicUser) Username() string {
+	return u.username
+}
+
 func (u *basicUser) WhoAmIObject() interface{} {
 	return map[string]interface{}{
 		"id":             u.id,

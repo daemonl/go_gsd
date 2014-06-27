@@ -19,8 +19,8 @@ func (r *redirectResponse) ContentType() string {
 }
 
 func (r *redirectResponse) HTTPExtra(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Header().Add("location", string(*r))
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (r *redirectResponse) WriteTo(w io.Writer) error {

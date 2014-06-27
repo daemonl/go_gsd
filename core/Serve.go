@@ -77,7 +77,7 @@ func Serve(config *ServerConfig) error {
 
 	if config.DevMode {
 		log.Println("---DEV MODE---")
-		http.Handle("/app.html", &minihandlers.RawFileHandler{WebRoot: config.WebRoot, Filename: "app_dev.html"})
+		routes.AddRoute("/app.html", &minihandlers.RawFileHandler{WebRoot: config.WebRoot, Filename: "app_dev.html"})
 		http.Handle("/main.css", &minihandlers.LessHandler{WebRoot: config.WebRoot, Filename: "less/main.less"})
 		http.Handle("/pdf.css", &minihandlers.LessHandler{WebRoot: config.WebRoot, Filename: "less/pdf.less"})
 	}

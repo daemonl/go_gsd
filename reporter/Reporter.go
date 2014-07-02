@@ -31,7 +31,7 @@ func (r *Reporter) Handle(request shared.IPathRequest) (shared.IResponse, error)
 func (r *Reporter) GetReportHTMLWriter(name string, pk uint64, session shared.ISession) (shared.IResponse, error) {
 	reportConfig, ok := r.Reports[name]
 	if !ok {
-		return nil, fmt.Errorf("Report %s not found", name)
+		return nil, &ReportNotFoundError{fmt.Sprintf("Report %s not found", name)}
 	}
 
 	report := &Report{

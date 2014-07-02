@@ -15,6 +15,13 @@ type Router interface {
 	AddRoutePathFunc(format string, handlerPathFunc func(shared.IPathRequest) (shared.IResponse, error), methods ...string) error
 	Fallthrough(string)
 	ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Request)
+	Redirect(from, to string)
+}
+
+type UserDisplayError interface {
+	Error() string
+	GetUserDescription() string
+	GetHTTPStatus() int
 }
 
 /*

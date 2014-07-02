@@ -1,7 +1,6 @@
 package reporter
 
 import (
-	"fmt"
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/view"
@@ -19,6 +18,20 @@ type ReportConfig struct {
 	Collection   string                                  `json:"collection"`
 	Queries      map[string]*databath.RawQueryConditions `json:"queries"`
 	ScriptName   string                                  `json:"script"`
+}
+
+type ReportNotFoundError struct {
+	Message string
+}
+
+func (e *ReportNotFoundError) Error() string {
+	return e.Message
+}
+func (e *ReportNotFoundError) GetUserDescription() string {
+	return e.Message
+}
+func (e *ReportNotFoundError) GetHTTPStatus() int {
+	return 404
 }
 
 func (report *Report) PrepareWriter() (*view.HTMLTemplateWriter, error) {
@@ -49,7 +62,7 @@ func (report *Report) PrepareWriter() (*view.HTMLTemplateWriter, error) {
 	}
 
 	if len(results) < 1 {
-		return nil, fmt.Errorf("No results found for core object")
+		return nil, &ReportNotFoundError{"No results found for core object"}
 	}
 
 	emailParameters[report.Config.Collection] = results[0]

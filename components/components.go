@@ -29,3 +29,7 @@ type Hooker interface {
 	DoPreHooks(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
 	DoPostHooks(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
 }
+
+type Xero interface {
+	PostInvoice(string) (string, error)
+}

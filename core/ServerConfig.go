@@ -3,10 +3,12 @@ package core
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/csv"
 	"github.com/daemonl/go_gsd/dynamic"
+	"github.com/daemonl/go_gsd/dynamic_xero"
 	"github.com/daemonl/go_gsd/hooker"
 	"github.com/daemonl/go_gsd/mailer"
 	"github.com/daemonl/go_gsd/mailhandler"
@@ -14,6 +16,7 @@ import (
 	"github.com/daemonl/go_gsd/pdfhandler"
 	"github.com/daemonl/go_gsd/reporter"
 	"github.com/daemonl/go_gsd/view"
+	"github.com/daemonl/go_xero"
 
 	"github.com/daemonl/go_lib/google_auth"
 )
@@ -24,6 +27,10 @@ type ServerConfig struct {
 		DataSourceName string `json:"dsn"`
 		PoolSize       int    `json:"poolSize"`
 	} `json:"database"`
+	Xero struct {
+		AppKey         string `json:"appKey"`
+		PrivateKeyFile string `json:"privateKeyFile"`
+	} `json:"xero"`
 	ModelFile           string   `json:"modelFile"`
 	TemplateRoot        string   `json:"templateRoot"`
 	WebRoot             string   `json:"webRoot"`
@@ -67,11 +74,26 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 	}
 	core.Mailer = mailer
 
+	//////////
+	// Xero //
+	if len(config.Xero.AppKey) > 0 {
+		log.Println("LOAD XERO")
+		x, err := xero.GetXeroPrivateCore(config.Xero.PrivateKeyFile, config.Xero.AppKey)
+		if err != nil {
+			return nil, err
+		}
+		dx := &dynamic_xero.DynamicXero{
+			Xero: x,
+		}
+		core.Xero = dx
+	}
+
 	/////////////
 	// Runner //
 	runner := &dynamic.DynamicRunner{
 		BaseDirectory: config.ScriptDirectory,
 		Mailer:        mailer,
+		Xero:          core.Xero,
 	}
 	core.Runner = runner
 

@@ -140,6 +140,23 @@ func (rc *RunContext) SqlExec(call otto.FunctionCall) otto.Value {
 	return val
 }
 
+func (rc *RunContext) XERO_PostInvoice(call otto.FunctionCall) otto.Value {
+	log.Println("XERO_PostInvoice")
+	if len(call.ArgumentList) != 1 {
+		return rc.Err("XERO_PostInvoice requires a single JSON string")
+	}
+	jsonString, err := call.ArgumentList[0].ToString()
+	if err != nil {
+		return rc.Err(err.Error())
+	}
+
+	res, err := rc.runner.Xero.PostInvoice(jsonString)
+	if err != nil {
+		return rc.Err(err.Error())
+	}
+	val, _ := otto.ToValue(res)
+	return val
+}
 func (rc *RunContext) SqlQuery(call otto.FunctionCall) otto.Value {
 
 	log.Println("QUERY")

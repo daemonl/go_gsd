@@ -15,6 +15,7 @@ import (
 type DynamicRunner struct {
 	BaseDirectory string
 	Mailer        components.Mailer
+	Xero          components.Xero
 }
 
 func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error) {
@@ -50,6 +51,10 @@ func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{},
 	rc.otto.Set("fail", rc.Fail)
 	rc.otto.Set("setResponseVal", rc.SetResponseVal)
 	rc.otto.Set("end", rc.End)
+
+	//if dr.Xero != nil {
+	rc.otto.Set("XERO_PostInvoice", rc.XERO_PostInvoice)
+	//}
 
 	log.Println("START")
 

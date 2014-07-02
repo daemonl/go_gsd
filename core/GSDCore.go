@@ -20,6 +20,7 @@ type GSDCore struct {
 	Reporter components.Reporter
 	PDFer    components.PDFer
 	Runner   components.Runner
+	Xero     components.Xero
 
 	CSVHandler  shared.IPathHandler
 	PDFHandler  shared.IPathHandler

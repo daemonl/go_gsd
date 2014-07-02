@@ -99,6 +99,7 @@ func Serve(config *ServerConfig) error {
 	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
 	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
 
+	routes.Redirect("/", "app.html")
 	routes.Fallthrough(config.WebRoot)
 
 	http.Handle("/", routes)

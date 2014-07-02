@@ -10,6 +10,7 @@ import (
 
 type router struct {
 	routes             []*route
+	redirects          map[string]string
 	publicPatterns     []*regexp.Regexp
 	parser             shared.IParser
 	fallthroughHandler func(respWriter http.ResponseWriter, httpRequest *http.Request)
@@ -17,6 +18,7 @@ type router struct {
 
 func GetRouter(p shared.IParser, rawPublicPatterns []string) Router {
 	r := &router{}
+	r.redirects = map[string]string{}
 	r.routes = make([]*route, 0, 0)
 	r.parser = p
 	r.publicPatterns = make([]*regexp.Regexp, len(rawPublicPatterns), len(rawPublicPatterns))
@@ -122,7 +124,17 @@ searching:
 	return found
 }
 
+func (r *router) Redirect(from, to string) {
+	r.redirects[from] = to
+}
+
 func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Request) {
+
+	redirectTo, ok := r.redirects[httpRequest.URL.Path]
+	if ok {
+		http.Redirect(respWriter, httpRequest, redirectTo, http.StatusTemporaryRedirect)
+		return
+	}
 
 	log.Printf("%s %s\n", httpRequest.Method, httpRequest.URL.RequestURI())
 
@@ -169,6 +181,13 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 
 	res, err := path.handler.Handle(wrapRequest(req, path))
 	if err != nil {
+		ude, ok := err.(UserDisplayError)
+		if ok {
+			req.Logf("Handled Handler Error: %s", err.Error())
+			respWriter.WriteHeader(ude.GetHTTPStatus())
+			respWriter.Write([]byte(ude.GetUserDescription()))
+			return
+		}
 		req.Logf("Handler Error: %s", err.Error())
 		respWriter.WriteHeader(500)
 		respWriter.Write([]byte(`INTERNAL SERVER ERROR`))

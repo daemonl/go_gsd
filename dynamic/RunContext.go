@@ -16,6 +16,12 @@ type RunContext struct {
 	EndChan      chan bool
 }
 
+type UserDisplayError interface {
+	Error() string
+	GetUserDescription() string
+	GetHTTPStatus() int
+}
+
 func (rc *RunContext) Stop() {
 	log.Println("STOP OTTO")
 	go func() {
@@ -29,7 +35,7 @@ func (rc *RunContext) Stop() {
 }
 
 func (rc *RunContext) Err(message string) otto.Value {
-	log.Printf("Error in otto run: %s\n", message)
+	log.Printf("Error (a) in otto run: %s\n", message)
 	rc.errorMessage = message
 	rc.Stop()
 	return otto.NullValue()
@@ -140,23 +146,46 @@ func (rc *RunContext) SqlExec(call otto.FunctionCall) otto.Value {
 	return val
 }
 
-func (rc *RunContext) XERO_PostInvoice(call otto.FunctionCall) otto.Value {
-	log.Println("XERO_PostInvoice")
-	if len(call.ArgumentList) != 1 {
-		return rc.Err("XERO_PostInvoice requires a single JSON string")
+func (rc *RunContext) XERO_Post(call otto.FunctionCall) otto.Value {
+	log.Println("XERO_Post")
+	if len(call.ArgumentList) < 2 {
+		return rc.Err("XERO_Post requires <ObjectType>, <object>")
 	}
-	jsonString, err := call.ArgumentList[0].ToString()
+
+	collectionName, err := call.ArgumentList[0].ToString()
 	if err != nil {
 		return rc.Err(err.Error())
 	}
 
-	res, err := rc.runner.Xero.PostInvoice(jsonString)
+	jsonString, err := call.ArgumentList[1].Export()
 	if err != nil {
 		return rc.Err(err.Error())
 	}
-	val, _ := otto.ToValue(res)
+
+	resp := map[string]interface{}{}
+
+	var resBody interface{}
+	
+		resBody, err = rc.runner.Xero.Post(collectionName, jsonString)
+
+	if err != nil {
+		resp["status"] = "ERROR"
+		resp["error"] = err
+		if ude, ok := err.(UserDisplayError); ok {
+			resp["message"] = ude.GetUserDescription()
+		}
+	} else {
+		resp["status"] = "OK"
+		resp["content"] = resBody
+	}
+	val, err := rc.otto.ToValue(resp)
+
+	if err != nil {
+		log.Printf("Error converting xero resp to value: %s\n", err.Error())
+	}
 	return val
 }
+
 func (rc *RunContext) SqlQuery(call otto.FunctionCall) otto.Value {
 
 	log.Println("QUERY")

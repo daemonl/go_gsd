@@ -3,20 +3,14 @@ package dynamic_xero
 import (
 	"encoding/json"
 	"github.com/daemonl/go_xero"
-	"github.com/daemonl/go_xero/xero_objects"
 )
 
 type DynamicXero struct {
 	Xero *xero.Xero
 }
 
-func (dx *DynamicXero) PostInvoice(raw string) (string, error) {
-	invoice := &xero_objects.Invoice{}
-	err := json.Unmarshal([]byte(raw), invoice)
-	if err != nil {
-		return "", err
-	}
-	res, err := dx.Xero.PostInvoice(invoice)
+func (dx *DynamicXero) Post(objectType string, obj interface{}, parameters ...string) (string, error) {
+	res, err := dx.Xero.Post(objectType, obj, parameters...)
 	if err != nil {
 		return "", err
 	}
@@ -26,3 +20,4 @@ func (dx *DynamicXero) PostInvoice(raw string) (string, error) {
 	}
 	return string(resBytes), nil
 }
+

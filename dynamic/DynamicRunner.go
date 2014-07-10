@@ -53,7 +53,7 @@ func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{},
 	rc.otto.Set("end", rc.End)
 
 	//if dr.Xero != nil {
-	rc.otto.Set("XERO_PostInvoice", rc.XERO_PostInvoice)
+	rc.otto.Set("XERO_Post", rc.XERO_Post)
 	//}
 
 	log.Println("START")

@@ -31,5 +31,5 @@ type Hooker interface {
 }
 
 type Xero interface {
-	PostInvoice(string) (string, error)
+	Post(collection string, data interface{}, params ...string) (string, error)
 }

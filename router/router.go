@@ -136,7 +136,7 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 		return
 	}
 
-	log.Printf("%s %s\n", httpRequest.Method, httpRequest.URL.RequestURI())
+	//log.Printf("%s %s\n", httpRequest.Method, httpRequest.URL.RequestURI())
 
 	var err error
 
@@ -168,10 +168,11 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 	}
 
 	if path == nil {
-		log.Println("NO Path")
 		r.fallthroughHandler(respWriter, httpRequest)
 		return
 	}
+
+	log.Printf("%s %s\n", httpRequest.Method, httpRequest.URL.RequestURI())
 
 	log.Printf("Path %s Matches %s\n", httpRequest.URL.Path, path.format)
 

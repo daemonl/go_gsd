@@ -18,7 +18,7 @@ type LessHandler struct {
 func (h *LessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("LESS: Begin")
 	w.Header().Add("Content-Type", "text/css")
-	c := exec.Command("lessc", h.WebRoot+"/"+h.Filename)
+	c := exec.Command("lessc", "--line-numbers=comments", h.WebRoot+"/"+h.Filename)
 	errBuf := bytes.Buffer{}
 	c.Stdout = w
 	c.Stderr = &errBuf

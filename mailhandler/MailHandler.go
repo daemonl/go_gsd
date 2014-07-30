@@ -20,6 +20,9 @@ func (h *MailHandler) Handle(request shared.IPathRequest) (shared.IResponse, err
 	if err != nil {
 		return nil, err
 	}
+	if notes == "-" {
+		notes = ""
+	}
 
 	report, err := h.Reporter.GetReportHTMLWriter(reportName, id, request.Session())
 	if err != nil {
@@ -32,5 +35,5 @@ func (h *MailHandler) Handle(request shared.IPathRequest) (shared.IResponse, err
 		return nil, err
 	}
 
-	return nil, nil
+	return shared.QuickStringResponse("Email sent to " + recipientRaw), nil
 }

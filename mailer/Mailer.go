@@ -109,6 +109,13 @@ func (s *Mailer) Send(email *shared.Email) error {
 
 	c, err := smtp.Dial(s.Config.ServerAddress + ":" + s.Config.ServerPort)
 	if err != nil {
+		if s.Config.ServerPort == "9999" {
+			log.Println("No dev email server is active")
+			log.Printf(`
+			MAILTO: %s\n
+			SUBJECT: %s\n`, email.Recipient, email.Subject)
+			return nil
+		}
 		log.Println(err)
 		return err
 	}

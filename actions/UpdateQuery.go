@@ -2,6 +2,8 @@ package actions
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/shared"
 )
@@ -55,7 +57,7 @@ func (r *UpdateQuery) Handle(request Request, requestData interface{}) (shared.I
 	if err != nil {
 		return nil, err
 	}
-
+	log.Printf("Run: %s %v\n", sqlString, parameters)
 	resp, err := db.Exec(sqlString, parameters...)
 	if err != nil {
 		return nil, err

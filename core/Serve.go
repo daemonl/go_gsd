@@ -64,7 +64,8 @@ func Serve(config *ServerConfig) error {
 
 	if config.OAuthConfig != nil {
 		oauthHandler := google_auth.OAuthHandler{
-			Config: config.OAuthConfig,
+			Config:      config.OAuthConfig,
+			LoginLogout: lilo,
 		}
 		http.HandleFunc("/oauth/return", parser.Wrap(oauthHandler.OauthResponse))
 		http.HandleFunc("/oauth/request", parser.Wrap(oauthHandler.OauthRequest))

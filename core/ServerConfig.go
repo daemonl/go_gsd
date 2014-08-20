@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/csv"
@@ -40,6 +41,7 @@ type ServerConfig struct {
 	TemplateIncludeRoot string   `json:"templateIncludeRoot"`
 	ScriptDirectory     string   `json:"scriptDirectory"`
 	DevMode             bool
+	Timezone            *string `json:"timezone"`
 
 	ReportFile *string `json:"reportFile"`
 	Reports    map[string]reporter.ReportConfig
@@ -53,6 +55,16 @@ type ServerConfig struct {
 }
 
 func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
+
+	timezoneName := "Australia/Melbourne"
+	if config.Timezone != nil {
+		timezoneName = *config.Timezone
+	}
+	loc, err := time.LoadLocation(timezoneName) //"Australia/Melbourne")
+	if err != nil {
+		return nil, err
+	}
+	time.Local = loc
 
 	core = &GSDCore{}
 

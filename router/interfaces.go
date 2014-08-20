@@ -24,6 +24,12 @@ type UserDisplayError interface {
 	GetHTTPStatus() int
 }
 
+type UserObjectError interface {
+	Error() string
+	GetHTTPStatus() int
+	GetUserObject() interface{}
+}
+
 /*
 type TorchHandlerFunc func(torch.Request) (torch.Response, error)
 

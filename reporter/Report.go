@@ -38,36 +38,40 @@ func (report *Report) PrepareWriter() (*view.HTMLTemplateWriter, error) {
 
 	emailParameters := map[string]interface{}{}
 
-	context := databath.MapContext{
-		Fields: make(map[string]interface{}),
-	}
-	context.Fields["id"] = report.RootID
-
 	fieldset := "email"
-
-	rawQueryCondition := databath.RawQueryConditions{
-		Collection: &report.Config.Collection,
-		Pk:         &report.RootID,
-		Fieldset:   &fieldset,
-	}
-
 	db, err := report.Session.GetDatabaseConnection()
 	if err != nil {
 		return nil, err
 	}
 
-	results, err := report.Core.doSelect(db, &rawQueryCondition, &context)
-	if err != nil {
-		return nil, err
+	context := databath.MapContext{
+		Fields: make(map[string]interface{}),
 	}
+	if len(report.Config.Collection) > 0 {
 
-	if len(results) < 1 {
-		return nil, &ReportNotFoundError{"No results found for core object"}
-	}
+		context.Fields["id"] = report.RootID
 
-	emailParameters[report.Config.Collection] = results[0]
-	for k, v := range results[0] {
-		context.Fields["main."+k] = v
+		rawQueryCondition := databath.RawQueryConditions{
+			Collection: &report.Config.Collection,
+			Pk:         &report.RootID,
+			Fieldset:   &fieldset,
+		}
+
+		results, err := report.Core.doSelect(db, &rawQueryCondition, &context)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(results) < 1 {
+			return nil, &ReportNotFoundError{"No results found for core object"}
+		}
+
+		emailParameters[report.Config.Collection] = results[0]
+
+		for k, v := range results[0] {
+			context.Fields["main."+k] = v
+		}
+
 	}
 
 	for key, qc := range report.Config.Queries {

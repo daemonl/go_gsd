@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/shared"
 )
@@ -13,6 +14,7 @@ type CreateQuery struct {
 type createRequest struct {
 	Values     map[string]interface{}
 	Collection string
+	Fieldset   string
 }
 
 type createResult struct {
@@ -39,7 +41,11 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared
 		return nil, err
 	}
 
-	qc := databath.GetMinimalQueryConditions(createRequest.Collection, "form")
+	if len(createRequest.Fieldset) < 1 {
+		createRequest.Fieldset = "form"
+	}
+
+	qc := databath.GetMinimalQueryConditions(createRequest.Collection, createRequest.Fieldset)
 
 	model := r.Core.GetModel()
 

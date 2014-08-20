@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"encoding/json"
 )
 
 type router struct {
@@ -159,7 +160,7 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 			}
 		}
 		if !isPublicPath {
-			log.Printf("Path '%s %s' did not match any\n", httpRequest.Method, uri)
+			log.Printf("Path '%s %s' is not public, redirect to login\n", httpRequest.Method, uri)
 			http.Redirect(respWriter, httpRequest, "/login", http.StatusTemporaryRedirect)
 			return
 
@@ -182,13 +183,20 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 
 	res, err := path.handler.Handle(wrapRequest(req, path))
 	if err != nil {
-		ude, ok := err.(UserDisplayError)
-		if ok {
+		if ude, ok := err.(UserDisplayError); ok {
 			req.Logf("Handled Handler Error: %s", err.Error())
 			respWriter.WriteHeader(ude.GetHTTPStatus())
 			respWriter.Write([]byte(ude.GetUserDescription()))
 			return
 		}
+		if uoe, ok := err.(UserObjectError); ok {
+			req.Logf("Handled Handler Error: %s", err.Error())
+			respWriter.WriteHeader(uoe.GetHTTPStatus())
+			enc := json.NewEncoder(respWriter)
+			enc.Encode(uoe.GetUserObject())
+			return
+		}
+
 		req.Logf("Handler Error: %s", err.Error())
 		respWriter.WriteHeader(500)
 		respWriter.Write([]byte(`INTERNAL SERVER ERROR`))

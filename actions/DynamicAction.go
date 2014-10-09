@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+
 	"github.com/daemonl/go_gsd/shared"
 )
 
@@ -54,6 +55,21 @@ func (r *DynamicHandler) Handle(request Request, requestData interface{}) (share
 	fnConfig, ok := model.DynamicFunctions[cqr.FunctionName]
 	if !ok {
 		return nil, fmt.Errorf("No registered dynamic function named '%s'", cqr.FunctionName)
+	}
+
+	if len(fnConfig.Access) > 0 {
+		can := false
+		access := request.Session().User().Access()
+		for _, a := range fnConfig.Access {
+			if a == access {
+				can = true
+				break
+			}
+
+		}
+		if !can {
+			return nil, fmt.Errorf("NOT AUTHORISED")
+		}
 	}
 
 	resp, err := r.Core.RunDynamic(fnConfig.Filename, cqr.Parameters, db)

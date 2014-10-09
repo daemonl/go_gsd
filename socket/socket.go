@@ -2,15 +2,16 @@ package socket
 
 import (
 	"bufio"
-	"code.google.com/p/go.net/websocket"
 	"database/sql"
 	"encoding/json"
-	"github.com/daemonl/go_gsd/actions"
-	"github.com/daemonl/go_gsd/shared"
 	"io"
 	"log"
 	"strings"
 	"time"
+
+	"code.google.com/p/go.net/websocket"
+	"github.com/daemonl/go_gsd/actions"
+	"github.com/daemonl/go_gsd/shared"
 )
 
 var nextUID uint = 0
@@ -134,7 +135,10 @@ func (m *Manager) listener(ws *websocket.Conn) {
 	}
 	os.Sender <- &whoAmI
 
-	log.Printf("S:%d OPEN for user %d\n", os.UID, session.UserID())
+	userID := session.UserID()
+	if userID != nil {
+		log.Printf("S:%d OPEN for user %d\n", os.UID, *userID)
+	}
 
 	r := bufio.NewReader(ws)
 	for {

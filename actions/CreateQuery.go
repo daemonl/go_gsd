@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/shared"
@@ -71,6 +72,7 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared
 
 	res, err := db.Exec(sqlString, parameters...)
 	if err != nil {
+		log.Printf("ERROR in Exec %s: %s\n", sqlString, err.Error())
 		return nil, err
 	}
 	id, err := res.LastInsertId()

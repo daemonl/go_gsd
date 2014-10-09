@@ -45,6 +45,7 @@ func Serve(config *ServerConfig) error {
 		"custom":  &actions.CustomQuery{Core: core},
 		"dynamic": &actions.DynamicHandler{Core: core},
 		"ping":    &actions.PingAction{Core: core},
+		"msg":     &actions.MsgAction{Core: core},
 	}
 
 	socketManager := socket.GetManager(parser.Store)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/daemonl/go_gsd/core"
 	"github.com/daemonl/go_gsd/reporter"
@@ -15,6 +16,7 @@ var configFilename string
 var doSync bool
 var forceSync bool
 var devMode bool
+var setUser string
 
 func init() {
 	wd, err := os.Getwd()
@@ -25,6 +27,7 @@ func init() {
 	flag.BoolVar(&doSync, "sync", false, "Kick off a db sync instead of serving, Dumps the SQL to stdout unless --force is set")
 	flag.BoolVar(&forceSync, "force", false, "Run SQL statements live")
 	flag.BoolVar(&devMode, "dev", false, "Use app_dev.html and compile less live")
+	flag.StringVar(&setUser, "setuser", "", "specify a user for development username:password, will create or update")
 }
 
 func fileNameToObject(filename string, object interface{}) error {
@@ -86,6 +89,17 @@ func main() {
 			log.Println(err)
 			return
 		}
+	}
+	if len(setUser) > 0 {
+		parts := strings.Split(setUser, ":")
+		if len(parts) != 2 {
+			fmt.Fprintln(os.Stderr, "setuser must be in the form username:password")
+			os.Exit(1)
+		}
+		core.SetUser(config, parts[0], parts[1])
+	}
+
+	if doSync {
 		return
 	}
 

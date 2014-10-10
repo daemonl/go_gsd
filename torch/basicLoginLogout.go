@@ -4,21 +4,48 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/daemonl/go_gsd/shared"
 )
 
 type basicLoginLogout struct {
-	db *sql.DB
+	db                *sql.DB
+	usersTable        string
+	ColId             string
+	ColUsername       string
+	ColPassword       string
+	ColSetOnNextLogin string
+	ExtraColumns      []string
+	LoadUser          func(*sql.Rows) (shared.IUser, error)
 }
 
-func GetBasicLoginLogout(db *sql.DB) shared.ILoginLogout {
+func GetBasicLoginLogout(db *sql.DB, usersTable string) shared.ILoginLogout {
 	lilo := &basicLoginLogout{
-		db: db,
+		db:                db,
+		usersTable:        usersTable,
+		ColId:             "id",
+		ColUsername:       "username",
+		ColPassword:       "password",
+		ColSetOnNextLogin: "set_on_next_login",
+		ExtraColumns:      []string{"access"},
+		LoadUser:          LoadBasicUser,
 	}
 	return lilo
 }
 
+func (lilo *basicLoginLogout) userColString() string {
+	allCols := make([]string, len(lilo.ExtraColumns)+4, len(lilo.ExtraColumns)+4)
+	allCols[0] = lilo.ColId
+	allCols[1] = lilo.ColUsername
+	allCols[2] = lilo.ColPassword
+	allCols[3] = lilo.ColSetOnNextLogin
+	for i, c := range lilo.ExtraColumns {
+		allCols[i+4] = c
+	}
+
+	return strings.Join(allCols, ", ")
+}
 func (lilo *basicLoginLogout) HandleLogout(request shared.IRequest) (shared.IResponse, error) {
 	//request.Session.shared.IUser = nil
 	log.Println("LOGOUT")
@@ -39,7 +66,7 @@ func (lilo *basicLoginLogout) ForceLogin(request shared.IRequest, email string) 
 }
 
 func (lilo *basicLoginLogout) LoadUserById(id uint64) (shared.IUser, error) {
-	rows, err := lilo.db.Query(`SELECT id, username, password, access, set_on_next_login FROM staff WHERE id = ?`, id)
+	rows, err := lilo.db.Query(`SELECT `+lilo.userColString()+` FROM `+lilo.usersTable+` WHERE id = ?`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +74,7 @@ func (lilo *basicLoginLogout) LoadUserById(id uint64) (shared.IUser, error) {
 	if !rows.Next() {
 		return nil, errors.New("Could not find a user in the session store")
 	}
-	user := &basicUser{}
-	rows.Scan(&user.id, &user.username, &user.password, &user.access, &user.setOnNextLogin)
-	return user, nil
+	return lilo.LoadUser(rows)
 }
 
 func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, username string, password string) {
@@ -70,7 +95,7 @@ func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, 
 
 	db := lilo.db
 
-	rows, err := db.Query(`SELECT id, username, password, access, set_on_next_login FROM staff WHERE username = ?`, username)
+	rows, err := db.Query(`SELECT `+lilo.userColString()+` FROM `+lilo.usersTable+` WHERE `+lilo.ColUsername+` = ?`, username)
 	if err != nil {
 		panic(err)
 		log.Fatal(err)
@@ -85,8 +110,7 @@ func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, 
 		return
 	}
 
-	user := basicUser{}
-	err = rows.Scan(&user.id, &user.username, &user.password, &user.access, &user.setOnNextLogin)
+	user, err := lilo.LoadUser(rows)
 	if err != nil {
 		doError("Invalid user identifier", err)
 		return
@@ -112,8 +136,8 @@ func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, 
 
 	request.ResetSession()
 
-	request.Session().SetUser(&user)
-	if user.setOnNextLogin {
+	request.Session().SetUser(user)
+	if user.SetOnNextLogin() {
 		request.Redirect("/set_password")
 	} else {
 		request.Redirect(target)
@@ -168,7 +192,7 @@ func (lilo *basicLoginLogout) HandleSetPassword(r shared.IRequest) (shared.IResp
 	hashed := HashPassword(newPassword1)
 
 	db := lilo.db
-	_, err := db.Exec(`UPDATE staff SET password = ?, set_on_next_login = 0 WHERE id = ?`, hashed, r.Session().UserID())
+	_, err := db.Exec(`UPDATE `+lilo.usersTable+` SET `+lilo.ColPassword+` = ?, `+lilo.ColSetOnNextLogin+` = 0 WHERE `+lilo.ColId+` = ?`, hashed, r.Session().UserID())
 	if err != nil {
 		return doErr(err)
 	}

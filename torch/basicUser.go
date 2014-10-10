@@ -1,6 +1,8 @@
 package torch
 
 import (
+	"database/sql"
+
 	"github.com/daemonl/go_gsd/shared"
 )
 
@@ -12,8 +14,21 @@ type basicUser struct {
 	setOnNextLogin bool
 }
 
+func LoadBasicUser(rows *sql.Rows) (shared.IUser, error) {
+	user := &basicUser{}
+	err := rows.Scan(&user.id, &user.username, &user.password, &user.access, &user.setOnNextLogin)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func (u *basicUser) ID() uint64 {
 	return u.id
+}
+
+func (u *basicUser) GroupID() uint64 {
+	return 0
 }
 
 func (u *basicUser) GetContext() shared.IContext {
@@ -43,4 +58,8 @@ func (u *basicUser) WhoAmIObject() interface{} {
 		"access":         u.access,
 		"setOnNextLogin": u.setOnNextLogin,
 	}
+}
+
+func (u *basicUser) SetOnNextLogin() bool {
+	return u.setOnNextLogin
 }

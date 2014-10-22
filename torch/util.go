@@ -8,10 +8,12 @@ import (
 type redirectResponse string
 
 func getRedirectResponse(to string) (*redirectResponse, error) {
+	return GetRedirectResponse(to)
+}
 
+func GetRedirectResponse(to string) (*redirectResponse, error) {
 	rr := redirectResponse(to)
 	return &rr, nil
-
 }
 
 func (r *redirectResponse) ContentType() string {

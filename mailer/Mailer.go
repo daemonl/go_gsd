@@ -112,8 +112,9 @@ func (s *Mailer) Send(email *shared.Email) error {
 		if s.Config.ServerPort == "9999" {
 			log.Println("No dev email server is active")
 			log.Printf(`
-			MAILTO: %s\n
-			SUBJECT: %s\n`, email.Recipient, email.Subject)
+			MAILTO: %s
+			SUBJECT: %s
+			%s`, email.Recipient, email.Subject, email.HTML)
 			return nil
 		}
 		log.Println(err)

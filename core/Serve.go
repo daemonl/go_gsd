@@ -30,7 +30,7 @@ func Serve(config *ServerConfig) error {
 
 	model := core.GetModel()
 
-	lilo := torch.GetBasicLoginLogout(core.DB)
+	lilo := torch.GetBasicLoginLogout(core.DB, "staff")
 
 	sessionStore := torch.InMemorySessionStore(config.SessionDumpFile, lilo.LoadUserById, core.OpenDatabaseConnection)
 

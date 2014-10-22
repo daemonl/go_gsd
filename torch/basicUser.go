@@ -16,7 +16,7 @@ type basicUser struct {
 
 func LoadBasicUser(rows *sql.Rows) (shared.IUser, error) {
 	user := &basicUser{}
-	err := rows.Scan(&user.id, &user.username, &user.password, &user.access, &user.setOnNextLogin)
+	err := rows.Scan(&user.id, &user.username, &user.password, &user.setOnNextLogin, &user.access)
 	if err != nil {
 		return nil, err
 	}

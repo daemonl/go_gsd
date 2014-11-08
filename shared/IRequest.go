@@ -18,6 +18,8 @@ type IRequest interface {
 	DoError(err error)
 	DoErrorf(format string, parameters ...interface{})
 
+	ReadJson(into interface{}) error
+
 	GetRaw() (http.ResponseWriter, *http.Request)
 
 	WriteString(content string)

@@ -2,6 +2,7 @@ package torch
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/daemonl/go_gsd/shared"
@@ -68,6 +69,11 @@ func (r *basicRequest) GetContext() shared.IContext {
 
 func (r *basicRequest) GetRaw() (http.ResponseWriter, *http.Request) {
 	return r.writer, r.raw
+}
+
+func (r *basicRequest) ReadJson(into interface{}) error{
+	dec := json.NewDecoder(r.raw.Body)
+	return dec.Decode(into)
 }
 
 func (r *basicRequest) URLMatch(dest ...interface{}) error {

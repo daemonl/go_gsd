@@ -1,7 +1,7 @@
 package socket
 
 import (
-	"code.google.com/p/go.net/websocket"
+	"golang.org/x/net/websocket"
 	"database/sql"
 	"encoding/json"
 	"github.com/daemonl/go_gsd/shared"

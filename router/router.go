@@ -1,12 +1,13 @@
 package router
 
 import (
-	"github.com/daemonl/go_gsd/shared"
+	"encoding/json"
 	"log"
 	"net/http"
 	"regexp"
 	"strings"
-	"encoding/json"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type router struct {
@@ -179,6 +180,7 @@ func (r *router) ServeHTTP(respWriter http.ResponseWriter, httpRequest *http.Req
 
 	req.Logf("Begin %s %s", httpRequest.Method, httpRequest.URL.RequestURI())
 	req.Logf("User Agent: %s", httpRequest.UserAgent())
+	defer req.Cleanup()
 	defer req.Logf("End")
 
 	res, err := path.handler.Handle(wrapRequest(req, path))

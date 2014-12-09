@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/daemonl/go_gsd/shared"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/daemonl/go_gsd/shared"
 )
 
 type basicRequest struct {
@@ -30,11 +31,17 @@ func (r *basicRequest) DB() (*sql.DB, error) {
 	return r.db, nil
 }
 
+
 func (r *basicRequest) Method() string {
 	return r.raw.Method
 }
 
 func (r *basicRequest) Cleanup() {
+	if r.db == nil {
+		return
+	}
+	r.db.Close()
+	r.db = nil
 
 }
 
@@ -71,7 +78,7 @@ func (r *basicRequest) GetRaw() (http.ResponseWriter, *http.Request) {
 	return r.writer, r.raw
 }
 
-func (r *basicRequest) ReadJson(into interface{}) error{
+func (r *basicRequest) ReadJson(into interface{}) error {
 	dec := json.NewDecoder(r.raw.Body)
 	return dec.Decode(into)
 }

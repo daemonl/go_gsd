@@ -15,6 +15,7 @@ type ISession interface {
 	UpdateLastRequest()
 	SessionStore() ISessionStore
 	GetDatabaseConnection() (*sql.DB, error)
+	ReleaseDB(*sql.DB)
 
 	AddFlash(severity, format string, parameters ...interface{})
 	ResetFlash()

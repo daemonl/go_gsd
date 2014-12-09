@@ -31,7 +31,6 @@ func (r *basicRequest) DB() (*sql.DB, error) {
 	return r.db, nil
 }
 
-
 func (r *basicRequest) Method() string {
 	return r.raw.Method
 }
@@ -40,7 +39,7 @@ func (r *basicRequest) Cleanup() {
 	if r.db == nil {
 		return
 	}
-	r.db.Close()
+	r.session.ReleaseDB(r.db)
 	r.db = nil
 
 }

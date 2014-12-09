@@ -77,3 +77,7 @@ func (s *basicSession) SessionStore() shared.ISessionStore {
 func (s *basicSession) GetDatabaseConnection() (*sql.DB, error) {
 	return s.store.GetDatabaseConnectionForSession(s)
 }
+
+func (s *basicSession) ReleaseDB(db *sql.DB) {
+	s.store.ReleaseDatabaseConnection(db)
+}

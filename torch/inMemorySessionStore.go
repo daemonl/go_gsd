@@ -17,17 +17,19 @@ import (
 )
 
 type inMemorySessionStore struct {
-	sessions          map[string]shared.ISession
-	dumpFile          *string
-	broadcast         func(string, interface{})
-	getDatabaseMethod func(shared.ISession) (*sql.DB, error)
+	sessions              map[string]shared.ISession
+	dumpFile              *string
+	broadcast             func(string, interface{})
+	getDatabaseMethod     func(shared.ISession) (*sql.DB, error)
+	releaseDatabaseMethod func(*sql.DB)
 }
 
-func InMemorySessionStore(dumpFile *string, loadUserById func(uint64) (shared.IUser, error), getDatabaseMethod func(shared.ISession) (*sql.DB, error)) shared.ISessionStore {
+func InMemorySessionStore(dumpFile *string, loadUserById func(uint64) (shared.IUser, error), getDatabaseMethod func(shared.ISession) (*sql.DB, error), releaseDatabaseMethod func(*sql.DB)) shared.ISessionStore {
 	ss := inMemorySessionStore{
-		sessions:          make(map[string]shared.ISession),
-		dumpFile:          dumpFile,
-		getDatabaseMethod: getDatabaseMethod,
+		sessions:              make(map[string]shared.ISession),
+		dumpFile:              dumpFile,
+		getDatabaseMethod:     getDatabaseMethod,
+		releaseDatabaseMethod: releaseDatabaseMethod,
 	}
 
 	go ss.StartExpiry()
@@ -108,6 +110,10 @@ func (ss *inMemorySessionStore) SetBroadcast(broadcast func(string, interface{})
 
 func (ss *inMemorySessionStore) GetDatabaseConnectionForSession(session shared.ISession) (*sql.DB, error) {
 	return ss.getDatabaseMethod(session)
+}
+
+func (ss *inMemorySessionStore) ReleaseDatabaseConnection(db *sql.DB) {
+	ss.releaseDatabaseMethod(db)
 }
 
 func (ss *inMemorySessionStore) Broadcast(name string, data interface{}) {

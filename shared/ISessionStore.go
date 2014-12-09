@@ -11,4 +11,5 @@ type ISessionStore interface {
 	SetBroadcast(func(string, interface{}))
 	Broadcast(string, interface{})
 	GetDatabaseConnectionForSession(ISession) (*sql.DB, error)
+	ReleaseDatabaseConnection(*sql.DB)
 }

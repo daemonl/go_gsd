@@ -32,7 +32,7 @@ func Serve(config *ServerConfig) error {
 
 	lilo := torch.GetBasicLoginLogout(core.DB, "staff")
 
-	sessionStore := torch.InMemorySessionStore(config.SessionDumpFile, lilo.LoadUserById, core.OpenDatabaseConnection)
+	sessionStore := torch.InMemorySessionStore(config.SessionDumpFile, lilo.LoadUserById, core.OpenDatabaseConnection, core.CloseDatabaseConnection)
 
 	parser := torch.BasicParser(sessionStore, config.PublicPatternsRaw)
 

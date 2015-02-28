@@ -47,6 +47,7 @@ func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{},
 	rc.otto.Set("args", parameters)
 	rc.otto.Set("sqlExec", rc.SqlExec)
 	rc.otto.Set("sqlQuery", rc.SqlQuery)
+	rc.otto.Set("runScript", rc.RunScript)
 	rc.otto.Set("sendMail", rc.SendMail)
 	rc.otto.Set("fail", rc.Fail)
 	rc.otto.Set("setResponseVal", rc.SetResponseVal)

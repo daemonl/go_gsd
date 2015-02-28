@@ -2,9 +2,9 @@ package dynamic
 
 import (
 	"database/sql"
-	"log"
-
+	"encoding/json"
 	"github.com/robertkrimen/otto"
+	"log"
 )
 
 type RunContext struct {
@@ -57,6 +57,39 @@ func (rc *RunContext) End(call otto.FunctionCall) otto.Value {
 	return otto.NullValue()
 }
 
+func (rc *RunContext) RunScript(call otto.FunctionCall) otto.Value {
+	if len(call.ArgumentList) != 2 {
+		return rc.Err("RunScript must be (string, interface{}")
+	}
+	script, err := call.ArgumentList[0].ToString()
+	if err != nil {
+		log.Println(err.Error())
+		return rc.Err(err.Error())
+	}
+	parametersRaw := call.ArgumentList[1].String()
+	if err != nil {
+		log.Println(err.Error())
+		return rc.Err(err.Error())
+	}
+	parameters := map[string]interface{}{}
+	json.Unmarshal([]byte(parametersRaw), &parameters)
+	result, err := rc.runner.Run(script, parameters, rc.db)
+	if err != nil {
+		log.Println(err.Error())
+		return rc.Err(err.Error())
+	}
+	resultJson, err := json.Marshal(result)
+	if err != nil {
+		log.Println(err.Error())
+		return rc.Err(err.Error())
+	}
+	r, err := otto.ToValue(string(resultJson))
+	if err != nil {
+		log.Println(err.Error())
+		return rc.Err(err.Error())
+	}
+	return r
+}
 func (rc *RunContext) SetResponseVal(call otto.FunctionCall) otto.Value {
 	if len(call.ArgumentList) != 2 {
 		return rc.Err("SetResponseVal must be (string, interface{})")
@@ -165,8 +198,8 @@ func (rc *RunContext) XERO_Post(call otto.FunctionCall) otto.Value {
 	resp := map[string]interface{}{}
 
 	var resBody interface{}
-	
-		resBody, err = rc.runner.Xero.Post(collectionName, jsonString)
+
+	resBody, err = rc.runner.Xero.Post(collectionName, jsonString)
 
 	if err != nil {
 		resp["status"] = "ERROR"

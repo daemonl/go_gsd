@@ -31,6 +31,10 @@ func (r *basicRequest) DB() (*sql.DB, error) {
 	return r.db, nil
 }
 
+func (r *basicRequest) QueryString() shared.IQueryString {
+	return shared.GetQueryString(r.raw.URL.Query())
+}
+
 func (r *basicRequest) Method() string {
 	return r.raw.Method
 }

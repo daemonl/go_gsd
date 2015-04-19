@@ -22,6 +22,8 @@ type IRequest interface {
 
 	GetRaw() (http.ResponseWriter, *http.Request)
 
+	QueryString() IQueryString
+
 	WriteString(content string)
 	Writef(format string, params ...interface{})
 	PostValueString(name string) string

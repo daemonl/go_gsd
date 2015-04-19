@@ -84,7 +84,7 @@ func (ss *inMemorySessionStore) loadSessions(r io.Reader, loadUser func(uint64) 
 		}
 		userId, err := strconv.ParseUint(strings.TrimSpace(parts[1]), 10, 64)
 		if err != nil {
-			log.Println("Error loading session: %s\n", err)
+			log.Printf("Error loading session: %s\n", err)
 			continue
 		}
 		s := &basicSession{
@@ -94,7 +94,7 @@ func (ss *inMemorySessionStore) loadSessions(r io.Reader, loadUser func(uint64) 
 		}
 		user, err := loadUser(userId)
 		if err != nil {
-			log.Println("Error loading session: %s\n", err)
+			log.Printf("Error loading session: %s\n", err)
 			continue
 		}
 		s.user = user

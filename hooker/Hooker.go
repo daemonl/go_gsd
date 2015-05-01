@@ -2,10 +2,10 @@ package hooker
 
 import (
 	"database/sql"
-	"fmt"
-	"github.com/daemonl/go_gsd/shared"
 	"log"
 	"time"
+
+	"github.com/daemonl/go_gsd/shared"
 
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/components"
@@ -153,13 +153,12 @@ func (h *Hooker) WriteHistory(db *sql.DB, as *shared.ActionSummary, session shar
 
 	log.Println("WRITE HISTORY", as.UserId, identity, timestamp, as.Action, as.Collection, as.Pk)
 
-	sql := fmt.Sprintf(`INSERT INTO history 
+	_, err := db.Exec(
+		`INSERT INTO history 
 		(user, identity, timestamp, action, entity, entity_id) VALUES 
-		(%d, '%s', %d, '%s', '%s', %d)`,
-		as.UserId, identity, timestamp, as.Action, as.Collection, as.Pk)
-	//log.Println(sql)
+		(?, ?, ?, ?, ?, ?)
+		`, as.UserId, identity, timestamp, as.Action, as.Collection, as.Pk)
 
-	_, err := db.Exec(sql)
 	if err != nil {
 		log.Println(err)
 		return

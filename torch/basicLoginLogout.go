@@ -3,6 +3,7 @@ package torch
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 
@@ -18,6 +19,8 @@ type basicLoginLogout struct {
 	ColSetOnNextLogin string
 	ExtraColumns      []string
 	LoadUser          func(*sql.Rows) (shared.IUser, error)
+
+	Authenticators []shared.IAuthenticator
 }
 
 func GetBasicLoginLogout(db *sql.DB, usersTable string) shared.ILoginLogout {
@@ -30,6 +33,7 @@ func GetBasicLoginLogout(db *sql.DB, usersTable string) shared.ILoginLogout {
 		ColSetOnNextLogin: "set_on_next_login",
 		ExtraColumns:      []string{"access"},
 		LoadUser:          LoadBasicUser,
+		Authenticators:    []shared.IAuthenticator{},
 	}
 	return lilo
 }
@@ -46,6 +50,11 @@ func (lilo *basicLoginLogout) userColString() string {
 
 	return strings.Join(allCols, ", ")
 }
+
+func (lilo *basicLoginLogout) AddAuthenticator(a shared.IAuthenticator) {
+	lilo.Authenticators = append(lilo.Authenticators, a)
+}
+
 func (lilo *basicLoginLogout) HandleLogout(request shared.IRequest) (shared.IResponse, error) {
 	//request.Session.shared.IUser = nil
 	log.Println("LOGOUT")
@@ -54,15 +63,31 @@ func (lilo *basicLoginLogout) HandleLogout(request shared.IRequest) (shared.IRes
 	return getRedirectResponse("/")
 }
 
+func (lilo *basicLoginLogout) HandleOauthCallback(request shared.IRequest) (shared.IResponse, error) {
+	log.Println("LOGIN")
+	for _, authenticator := range lilo.Authenticators {
+		log.Println("AUTH")
+		searchCol, searchVal, err := authenticator.TryToAuthenticate(request)
+		if err != nil {
+			return nil, err
+		}
+		if len(searchCol) > 0 && searchVal != nil {
+			lilo.doLogin(request, true, searchCol, searchVal, "")
+			return nil, nil
+		}
+	}
+	return nil, nil
+}
+
 func (lilo *basicLoginLogout) HandleLogin(request shared.IRequest) (shared.IResponse, error) {
 	username := request.PostValueString("username")
 	password := request.PostValueString("password")
-	lilo.doLogin(request, false, username, password)
+	lilo.doLogin(request, false, lilo.ColUsername, username, password)
 	return nil, nil
 }
 
 func (lilo *basicLoginLogout) ForceLogin(request shared.IRequest, email string) {
-	lilo.doLogin(request, true, email, "")
+	lilo.doLogin(request, true, lilo.ColUsername, email, "")
 }
 
 func (lilo *basicLoginLogout) LoadUserById(id uint64) (shared.IUser, error) {
@@ -77,7 +102,7 @@ func (lilo *basicLoginLogout) LoadUserById(id uint64) (shared.IUser, error) {
 	return lilo.LoadUser(rows)
 }
 
-func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, username string, password string) {
+func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, usernameCol string, username interface{}, password string) {
 
 	doError := func(verboseMessage string, err error) {
 		log.Printf("Issue loggin in (not error): %s, U:%s", verboseMessage, username)
@@ -95,7 +120,7 @@ func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, 
 
 	db := lilo.db
 
-	rows, err := db.Query(`SELECT `+lilo.userColString()+` FROM `+lilo.usersTable+` WHERE `+lilo.ColUsername+` = ?`, username)
+	rows, err := db.Query(`SELECT `+lilo.userColString()+` FROM `+lilo.usersTable+` WHERE `+usernameCol+` = ?`, username)
 	if err != nil {
 		panic(err)
 		log.Fatal(err)
@@ -106,7 +131,11 @@ func (lilo *basicLoginLogout) doLogin(request shared.IRequest, noPassword bool, 
 
 	canHaz := rows.Next()
 	if !canHaz {
-		doError("Database lookup error", nil)
+		if noPassword {
+			doError(fmt.Sprintf("Could not find %s", username), nil)
+		} else {
+			doError("", nil)
+		}
 		return
 	}
 

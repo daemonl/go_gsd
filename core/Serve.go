@@ -16,7 +16,6 @@ import (
 	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/socket"
 	"github.com/daemonl/go_gsd/torch"
-	"github.com/daemonl/go_lib/google_auth"
 )
 
 var re_unsafe *regexp.Regexp = regexp.MustCompile(`[^A-Za-z0-9]`)
@@ -58,6 +57,13 @@ func BuildServer(config *ServerConfig) (IServer, error) {
 
 	lilo := torch.GetBasicLoginLogout(s.core.DB, "staff")
 
+	authData := map[string]interface{}{}
+	if config.GoogleAuthConfig != nil {
+		lilo.AddAuthenticator(config.GoogleAuthConfig)
+		authData["AuthCallback"] = config.GoogleAuthConfig.RedirectURI
+		authData["GoogleClientID"] = config.GoogleAuthConfig.ClientID
+	}
+
 	s.sessionStore = torch.InMemorySessionStore(config.SessionDumpFile, lilo.LoadUserById, s.core.OpenDatabaseConnection, s.core.CloseDatabaseConnection)
 
 	parser := torch.BasicParser(s.sessionStore, config.PublicPatternsRaw)
@@ -84,20 +90,21 @@ func BuildServer(config *ServerConfig) (IServer, error) {
 		}(funcName, handler)
 	}
 
-	loginViewHandler := s.core.TemplateManager.GetSimpleTemplateHandler("login.html")
-	setPasswordViewHandler := s.core.TemplateManager.GetSimpleTemplateHandler("set_password.html")
+	loginViewHandler := s.core.TemplateManager.GetSimpleTemplateHandler("login.html", authData)
+
+	setPasswordViewHandler := s.core.TemplateManager.GetSimpleTemplateHandler("set_password.html", nil)
 
 	model := s.core.GetModel()
 	fileHandler := file.GetFileHandler(config.UploadDirectory, model)
 
-	if config.OAuthConfig != nil {
+	/*
 		oauthHandler := google_auth.OAuthHandler{
 			Config:      config.OAuthConfig,
 			LoginLogout: lilo,
 		}
 		http.HandleFunc("/oauth/return", parser.Wrap(oauthHandler.OauthResponse))
 		http.HandleFunc("/oauth/request", parser.Wrap(oauthHandler.OauthRequest))
-	}
+	}*/
 
 	// SET UP URLS
 
@@ -112,6 +119,7 @@ func BuildServer(config *ServerConfig) (IServer, error) {
 	}
 
 	s.router.AddRoute("/login", loginViewHandler, "GET")
+	s.router.AddRouteFunc("/oauth_callback", lilo.HandleOauthCallback, "GET")
 	s.router.AddRouteFunc("/login", lilo.HandleLogin, "POST")
 	s.router.AddRouteFunc("/logout", lilo.HandleLogout)
 	s.router.AddRoute("/set_password", setPasswordViewHandler, "GET")

@@ -43,6 +43,7 @@ func (vm *TemplateManager) GetHTMLTemplateWriter(templateName string, session sh
 type simpleTemplateHandler struct {
 	name    string
 	manager *TemplateManager
+	data    interface{}
 }
 
 func (th *simpleTemplateHandler) Handle(request shared.IRequest) (shared.IResponse, error) {
@@ -50,14 +51,16 @@ func (th *simpleTemplateHandler) Handle(request shared.IRequest) (shared.IRespon
 	if err != nil {
 		return nil, err
 	}
+	writer.Data = th.data
 
 	return writer, nil
 }
 
-func (vm *TemplateManager) GetSimpleTemplateHandler(name string) shared.IHandler {
+func (vm *TemplateManager) GetSimpleTemplateHandler(name string, data interface{}) shared.IHandler {
 	return &simpleTemplateHandler{
 		name:    name,
 		manager: vm,
+		data:    data,
 	}
 }
 

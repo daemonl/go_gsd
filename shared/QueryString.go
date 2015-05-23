@@ -11,6 +11,7 @@ type IQueryString interface {
 	Int64(string) (int64, bool)
 	Timestamp(string) (time.Time, bool)
 	Date(string) (time.Time, bool)
+	String(string) (string, bool)
 }
 
 func GetQueryString(values url.Values) IQueryString {

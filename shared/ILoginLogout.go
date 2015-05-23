@@ -6,4 +6,11 @@ type ILoginLogout interface {
 	HandleLogin(IRequest) (IResponse, error)
 	HandleLogout(IRequest) (IResponse, error)
 	HandleSetPassword(IRequest) (IResponse, error)
+
+	AddAuthenticator(IAuthenticator)
+	HandleOauthCallback(IRequest) (IResponse, error)
+}
+
+type IAuthenticator interface {
+	TryToAuthenticate(IRequest) (string, interface{}, error)
 }

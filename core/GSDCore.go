@@ -38,7 +38,6 @@ func (core *GSDCore) CloseDatabaseConnection(db *sql.DB) {
 	// leave it. open.
 }
 
-
 func (core *GSDCore) UsersDatabase() (*sql.DB, error) {
 	return sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
 }

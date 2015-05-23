@@ -19,7 +19,7 @@ import (
 	"github.com/daemonl/go_gsd/view"
 	"github.com/daemonl/go_xero"
 
-	"github.com/daemonl/go_lib/google_auth"
+	"github.com/daemonl/go_gsd/google_auth"
 )
 
 type ServerConfig struct {
@@ -51,7 +51,7 @@ type ServerConfig struct {
 
 	PDFBinary *string `json:"pdfBinary"`
 
-	OAuthConfig *google_auth.OAuthConfig `json:"oauth"`
+	GoogleAuthConfig *google_auth.GoogleAuth `json:"googleAuth"`
 }
 
 func (config *ServerConfig) GetCore() (core *GSDCore, err error) {

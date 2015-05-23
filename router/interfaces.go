@@ -2,6 +2,8 @@ package router
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/daemonl/go_gsd/shared"
 	//"github.com/daemonl/go_gsd/torch"
 	"net/http"
@@ -64,7 +66,10 @@ func (wr *WrappedRequest) ScanPath(dests ...interface{}) error {
 	_, r := wr.GetRaw()
 
 	uri := strings.Replace(r.URL.RequestURI(), "/", " ", -1)
+	uri = strings.Replace(uri, ".", " .", -1)
 	format := strings.Replace(wr.route.format, "/", " ", -1)
+	format = strings.Replace(format, "*", "%s", -1)
+	format = strings.Replace(format, ".", " .", -1)
 	_, err := fmt.Sscanf(uri, format, dests...)
 	for _, d := range dests {
 		switch d := d.(type) {
@@ -77,6 +82,7 @@ func (wr *WrappedRequest) ScanPath(dests ...interface{}) error {
 		}
 	}
 	if err != nil {
+		log.Printf("SCAN: %s -> %s\n", uri, format)
 		return fmt.Errorf("scanning '%s' into '%s': %s", r.URL.Path, wr.route.format, err.Error())
 	}
 

@@ -55,6 +55,8 @@ func (r *router) getRoute(format string, handler shared.IHandler, methods ...str
 	reStr := format
 	reStr = strings.Replace(reStr, "%d", "([0-9]+)", -1)
 	reStr = strings.Replace(reStr, "%s", `([^/]+)`, -1)
+	reStr = strings.Replace(reStr, ".", `\.`, -1)
+	reStr = strings.Replace(reStr, "*", `.*`, -1)
 	//log.Printf("%s -> %s\n", format, reStr)
 
 	re, err := regexp.Compile("^" + reStr + "$")

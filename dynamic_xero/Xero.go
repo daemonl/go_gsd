@@ -10,7 +10,8 @@ type DynamicXero struct {
 }
 
 func (dx *DynamicXero) Post(objectType string, obj interface{}, parameters ...string) (string, error) {
-	res, err := dx.Xero.Post(objectType, obj, parameters...)
+	// remarhsl obj as type in objectType
+	res, err := dx.Xero.Post(obj, parameters...)
 	if err != nil {
 		return "", err
 	}
@@ -20,4 +21,3 @@ func (dx *DynamicXero) Post(objectType string, obj interface{}, parameters ...st
 	}
 	return string(resBytes), nil
 }
-

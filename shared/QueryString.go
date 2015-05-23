@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"log"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -10,7 +11,7 @@ import (
 type IQueryString interface {
 	Int64(string) (int64, bool)
 	Timestamp(string) (time.Time, bool)
-	Date(string) (time.Time, bool)
+	Date(string, *time.Location) (time.Time, bool)
 	String(string) (string, bool)
 }
 
@@ -59,14 +60,15 @@ var reNotNumber *regexp.Regexp = regexp.MustCompile(`[^0-9]`)
 
 // Date parses a date in yyyy-mm-dd format, it strips any non numerics, so the separators don't matter at all
 // i.e. "2006-01-02" "20060102" and "2006a0b1c0d2e" are all the same
-func (qs *queryString) Date(key string) (time.Time, bool) {
+func (qs *queryString) Date(key string, location *time.Location) (time.Time, bool) {
 	str, ok := qs.String(key)
 	if !ok {
 		return time.Time{}, false
 	}
 	str = reNotNumber.ReplaceAllString(str, "")
-	t, err := time.Parse("20060102", str)
+	t, err := time.ParseInLocation("20060102", str, location)
 	if err != nil {
+		log.Println(err)
 		return time.Time{}, false
 	}
 	return t, true

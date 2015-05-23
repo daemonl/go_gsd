@@ -125,8 +125,8 @@ func BuildServer(config *ServerConfig) (IServer, error) {
 	s.router.AddRoute("/set_password", setPasswordViewHandler, "GET")
 	s.router.AddRouteFunc("/set_password", lilo.HandleSetPassword, "POST")
 
-	s.router.AddRoutePathFunc("/report_html/%s/%d", s.core.Reporter.Handle, "GET")
-	s.router.AddRoutePathFunc("/report_pdf/%s/%d", s.core.PDFHandler.Handle, "GET")
+	s.router.AddRoutePathFunc("/report/%s/%d/*.html", s.core.Reporter.Handle, "GET")
+	s.router.AddRoutePathFunc("/report/%s/%d/*.pdf", s.core.PDFHandler.Handle, "GET")
 
 	s.router.AddRoutePathFunc("/emailpreview/%s/%d", s.core.Reporter.Handle, "GET")
 	s.router.AddRoutePathFunc("/sendmail/%s/%d/%s/%s", s.core.MailHandler.Handle)

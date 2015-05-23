@@ -21,7 +21,8 @@ func (r *Reporter) Handle(request shared.IPathRequest) (shared.IResponse, error)
 
 	var name string
 	var pk uint64
-	err := request.ScanPath(&name, &pk)
+	var fname string
+	err := request.ScanPath(&name, &pk, &fname)
 	if err != nil {
 		return nil, err
 	}

@@ -13,8 +13,8 @@ type PDFHandler struct {
 func (h *PDFHandler) Handle(request shared.IPathRequest) (shared.IResponse, error) {
 	reportName := ""
 	var id uint64
-
-	err := request.ScanPath(&reportName, &id)
+	var fname string
+	err := request.ScanPath(&reportName, &id, &fname)
 	if err != nil {
 		return nil, err
 	}

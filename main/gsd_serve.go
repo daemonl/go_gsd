@@ -15,7 +15,6 @@ import (
 var configFilename string
 var doSync bool
 var forceSync bool
-var devMode bool
 var setUser string
 
 func init() {
@@ -26,25 +25,6 @@ func init() {
 	flag.StringVar(&configFilename, "config", wd+"/config.json", "Use Thusly")
 	flag.BoolVar(&doSync, "sync", false, "Kick off a db sync instead of serving, Dumps the SQL to stdout unless --force is set")
 	flag.BoolVar(&forceSync, "force", false, "Run SQL statements live")
-	flag.BoolVar(&devMode, "dev", false, "Use app_dev.html and compile less live")
-	flag.StringVar(&setUser, "setuser", "", "specify a user for development username:password, will create or update")
-}
-
-func fileNameToObject(filename string, object interface{}) error {
-	jsonFile, err := os.Open(filename)
-	defer jsonFile.Close()
-	if err != nil {
-		return err
-	}
-
-	decoder := json.NewDecoder(jsonFile)
-	err = decoder.Decode(object)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func parseCLI() (*core.ServerConfig, error) {
@@ -52,23 +32,10 @@ func parseCLI() (*core.ServerConfig, error) {
 	log.Printf("Load config from %s\n", configFilename)
 
 	var config core.ServerConfig
-	err := fileNameToObject(configFilename, &config)
+	err := core.FileNameToObject(configFilename, &config)
 	if err != nil {
 		return nil, err
 
-	}
-
-	config.DevMode = devMode
-
-	if config.ReportFile != nil {
-		log.Printf("Load email config from %s\n", *config.ReportFile)
-		var rc map[string]reporter.ReportConfig
-
-		err := fileNameToObject(*config.ReportFile, &rc)
-		if err != nil {
-			return nil, err
-		}
-		config.Reports = rc
 	}
 
 	return &config, nil

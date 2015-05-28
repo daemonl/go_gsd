@@ -4,27 +4,42 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/daemonl/databath"
-	"github.com/daemonl/go_gsd/shared"
-	"io"
+	"io/ioutil"
 	"log"
 	"mime/multipart"
-	"os"
+
+	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/shared"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 )
 
 type FileHandler struct {
-	Location string
-	Model    *databath.Model
+	BucketName string
+	Path       string
+	Model      *databath.Model
 }
 
-func GetFileHandler(location string, Model *databath.Model) *FileHandler {
+func GetFileHandler(bucketName string, path string, Model *databath.Model) *FileHandler {
 	fh := FileHandler{
-		Location: location,
-		Model:    Model,
+		BucketName: bucketName,
+		Path:       path,
+		Model:      Model,
 	}
 	return &fh
 }
-func (h *FileHandler) Upload(request shared.IRequest) {
+
+func (h *FileHandler) getBucket() (*s3.Bucket, error) {
+	auth, err := aws.EnvAuth()
+	if err != nil {
+		return nil, err
+	}
+	client := s3.New(auth, aws.APSoutheast2)
+	bucket := client.Bucket(h.BucketName)
+	return bucket, nil
+}
+
+func (h *FileHandler) Upload(request shared.IRequest) error {
 
 	var functionName string
 	var fileCollection string
@@ -33,22 +48,18 @@ func (h *FileHandler) Upload(request shared.IRequest) {
 
 	err := request.URLMatch(&functionName, &fileCollection, &collectionRef, &collectionId)
 	if err != nil {
-		request.DoError(err)
-		log.Println(err)
-		return
+		return err
 	}
 
 	_, r := request.GetRaw()
 	if r.Method != "POST" && r.Method != "PUT" {
 		request.WriteString("Must post a file (1)")
-		return
+		return nil
 	}
 
 	mpr, err := r.MultipartReader()
 	if err != nil {
-		request.DoError(err)
-		log.Println(err)
-		return
+		return err
 	}
 
 	var part *multipart.Part
@@ -64,7 +75,7 @@ func (h *FileHandler) Upload(request shared.IRequest) {
 	}
 	if part == nil {
 		request.WriteString("Must post a file (2)")
-		return
+		return nil
 	}
 
 	origName := part.FileName()
@@ -73,26 +84,19 @@ func (h *FileHandler) Upload(request shared.IRequest) {
 	_, _ = rand.Reader.Read(randBytes)
 	fileName := hex.EncodeToString(randBytes)
 
-	file, err := os.Create(h.Location + fileName)
+	bucket, err := h.getBucket()
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
-	log.Printf("Start read into %s\n", h.Location+fileName)
-	for {
-		b := make([]byte, 2048, 2048)
-		i, err := part.Read(b)
-		log.Printf("Read %d bytes\n", i)
-		if err != nil || i < 1 {
-			if err != nil {
-				log.Println(err)
-			}
-			break
-		}
-		file.Write(b)
+
+	upload, err := ioutil.ReadAll(part)
+	if err != nil {
+		return err
 	}
-	file.Close()
-	part.Close()
+	err = bucket.Put(h.Path+fileName, upload, "application/octet-stream", s3.Private)
+	if err != nil {
+		return err
+	}
 	log.Println("File Written")
 
 	dbEntry := map[string]interface{}{
@@ -103,9 +107,7 @@ func (h *FileHandler) Upload(request shared.IRequest) {
 
 	err = h.writeDatabaseEntry(request, dbEntry, fileCollection)
 	if err != nil {
-		log.Println(err)
-		request.DoError(err)
-		return
+		return err
 	}
 
 	request.WriteString(`
@@ -114,84 +116,80 @@ func (h *FileHandler) Upload(request shared.IRequest) {
 		</script>
 		Uploaded Successfully.
 	`)
-
+	return nil
 }
-func (h *FileHandler) Download(request shared.IRequest) {
+func (h *FileHandler) Download(request shared.IRequest) error {
+	return nil
+	/*
+		var functionName string
+		var fileCollection string
+		var fileId uint64
 
-	var functionName string
-	var fileCollection string
-	var fileId uint64
+		err := request.URLMatch(&functionName, &fileCollection, &fileId)
+		if err != nil {
+			return err
+		}
 
-	err := request.URLMatch(&functionName, &fileCollection, &fileId)
-	if err != nil {
-		request.DoError(err)
-		log.Println(err)
-		return
-	}
+		_, r := request.GetRaw()
+		if r.Method != "GET" {
+			request.WriteString("Must get")
+			return nil
+		}
 
-	_, r := request.GetRaw()
-	if r.Method != "GET" {
-		request.WriteString("Must get")
-		return
-	}
+		rqueryConditions := databath.RawQueryConditions{
+			Collection: &fileCollection,
+			Pk:         &fileId,
+		}
+		qc, _ := rqueryConditions.TranslateToQuery()
 
-	rqueryConditions := databath.RawQueryConditions{
-		Collection: &fileCollection,
-		Pk:         &fileId,
-	}
-	qc, _ := rqueryConditions.TranslateToQuery()
+		query, err := databath.GetQuery(request.GetContext(), h.Model, qc, false)
+		if err != nil {
+			return err
+		}
+		sqlString, parameters, err := query.BuildSelect()
+		if err != nil {
+			return err
+		}
 
-	query, err := databath.GetQuery(request.GetContext(), h.Model, qc, false)
-	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
-	}
-	sqlString, parameters, err := query.BuildSelect()
-	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
-	}
+		db, err := request.DB()
+		if err != nil {
+			return err
+		}
 
-	db, err := request.DB()
-	if err != nil {
-		request.DoError(err)
-		return
-	}
+		row, err := query.RunQueryWithSingleResult(db, sqlString, parameters)
+		if err != nil {
+			return err
+		}
+		fn, ok := row["file"].(string)
+		if !ok {
 
-	row, err := query.RunQueryWithSingleResult(db, sqlString, parameters)
-	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
-	}
-	fn, ok := row["file"].(string)
-	if !ok {
+			return nil
+		}
+		origName, ok := row["filename"].(string)
+		if !ok {
 
-		return
-	}
-	origName, ok := row["filename"].(string)
-	if !ok {
+			return nil
+		}
+			file, err := os.Open(h.Location + fn)
+			if err != nil {
+				log.Print(err)
+				request.DoError(err)
+				return
+			}
 
-		return
-	}
-	file, err := os.Open(h.Location + fn)
-	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
-	}
-	defer file.Close()
-	w, _ := request.GetRaw()
-	w.Header().Add("content-disposition", "attachment; filename="+origName)
+			defer file.Close()
 
-	_, err = io.Copy(w, file)
-	if err != nil {
-		log.Print(err)
-		request.DoError(err)
-		return
-	}
+			w, _ := request.GetRaw()
+			w.Header().Add("content-disposition", "attachment; filename="+origName)
+
+			_, err = io.Copy(w, file)
+			if err != nil {
+				log.Print(err)
+				request.DoError(err)
+				return
+			}
+	*/
+	return nil
 }
 
 func (h *FileHandler) writeDatabaseEntry(request shared.IRequest, dbEntry map[string]interface{}, fileCollection string) error {

@@ -2,14 +2,15 @@ package core
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/daemonl/databath"
 	"github.com/daemonl/go_gsd/csv"
 	"github.com/daemonl/go_gsd/dynamic"
-	"github.com/daemonl/go_gsd/dynamic_xero"
 	"github.com/daemonl/go_gsd/hooker"
 	"github.com/daemonl/go_gsd/mailer"
 	"github.com/daemonl/go_gsd/mailhandler"
@@ -17,7 +18,6 @@ import (
 	"github.com/daemonl/go_gsd/pdfhandler"
 	"github.com/daemonl/go_gsd/reporter"
 	"github.com/daemonl/go_gsd/view"
-	"github.com/daemonl/go_xero"
 
 	"github.com/daemonl/go_gsd/google_auth"
 )
@@ -32,6 +32,9 @@ type ServerConfig struct {
 		AppKey         string `json:"appKey"`
 		PrivateKeyFile string `json:"privateKeyFile"`
 	} `json:"xero"`
+	S3 struct {
+		BucketName string `json:"bucket"`
+	} `json:"s3"`
 	ModelFile           string   `json:"modelFile"`
 	TemplateRoot        string   `json:"templateRoot"`
 	WebRoot             string   `json:"webRoot"`
@@ -40,8 +43,7 @@ type ServerConfig struct {
 	UploadDirectory     string   `json:"uploadDirectory"`
 	TemplateIncludeRoot string   `json:"templateIncludeRoot"`
 	ScriptDirectory     string   `json:"scriptDirectory"`
-	DevMode             bool
-	Timezone            *string `json:"timezone"`
+	Timezone            *string  `json:"timezone"`
 
 	ReportFile *string `json:"reportFile"`
 	Reports    map[string]reporter.ReportConfig
@@ -54,7 +56,41 @@ type ServerConfig struct {
 	GoogleAuthConfig *google_auth.GoogleAuth `json:"googleAuth"`
 }
 
+func FileNameToObject(filename string, object interface{}) error {
+	jsonFile, err := os.Open(filename)
+	defer jsonFile.Close()
+	if err != nil {
+		return err
+	}
+
+	decoder := json.NewDecoder(jsonFile)
+	err = decoder.Decode(object)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Expand(in *string) {
+	if in == nil {
+		return
+	}
+	*in = os.ExpandEnv(*in)
+}
+
 func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
+
+	Expand(&config.Xero.PrivateKeyFile)
+	Expand(&config.ModelFile)
+	Expand(&config.TemplateRoot)
+	Expand(&config.WebRoot)
+	Expand(&config.UploadDirectory)
+	Expand(&config.TemplateIncludeRoot)
+	Expand(&config.ScriptDirectory)
+	Expand(config.ReportFile)
+	Expand(config.SessionDumpFile)
 
 	timezoneName := "Australia/Melbourne"
 	if config.Timezone != nil {
@@ -68,12 +104,24 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	core = &GSDCore{}
 
+	if config.ReportFile != nil {
+		log.Printf("Load email config from %s\n", *config.ReportFile)
+		var rc map[string]reporter.ReportConfig
+
+		err := FileNameToObject(*config.ReportFile, &rc)
+		if err != nil {
+			return nil, err
+		}
+		config.Reports = rc
+	}
+
 	//////////////////////
 	// Template Manager //
-	templateManager := view.GetTemplateManager(config.TemplateRoot, config.TemplateIncludeRoot)
+	log.Println("Load Template Manager")
+	templateManager := view.GetTemplateManager(string(config.TemplateRoot), string(config.TemplateIncludeRoot))
 	core.TemplateManager = templateManager
 
-	model, err := databath.ReadModelFromFile(config.ModelFile)
+	model, err := databath.ReadModelFromFile(string(config.ModelFile))
 	if err != nil {
 		return nil, fmt.Errorf("Error reading model file: %s", err.Error())
 	}
@@ -81,29 +129,17 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	////////////
 	// Mailer //
+	log.Println("Load Mailer")
 	mailer := &mailer.Mailer{
 		Config: config.SmtpConfig,
 	}
 	core.Mailer = mailer
 
-	//////////
-	// Xero //
-	if len(config.Xero.AppKey) > 0 {
-		log.Println("LOAD XERO")
-		x, err := xero.GetXeroPrivateCore(config.Xero.PrivateKeyFile, config.Xero.AppKey)
-		if err != nil {
-			return nil, err
-		}
-		dx := &dynamic_xero.DynamicXero{
-			Xero: x,
-		}
-		core.Xero = dx
-	}
-
 	/////////////
 	// Runner //
+	log.Println("Load Script Runner")
 	runner := &dynamic.DynamicRunner{
-		BaseDirectory: config.ScriptDirectory,
+		BaseDirectory: string(config.ScriptDirectory),
 		Mailer:        mailer,
 		Xero:          core.Xero,
 	}
@@ -111,6 +147,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	//////////////
 	// Reporter //
+	log.Println("Load Reporter")
 	reporter := &reporter.Reporter{
 		ViewManager: templateManager,
 		Runner:      runner,
@@ -121,6 +158,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	///////////
 	// PDFer //
+	log.Println("Load PDFer")
 	pdfer := &pdfer.PDFer{
 		Binary: *config.PDFBinary,
 	}
@@ -128,6 +166,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	////////////////
 	// PDFHandler //
+	log.Println("Load PDF Handler")
 	pdfHandler := &pdfhandler.PDFHandler{
 		Reporter: reporter,
 		PDFer:    pdfer,
@@ -136,6 +175,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	//////////////////
 	// MailHandler //
+	log.Println("Load Mail Handler")
 	mailHandler := &mailhandler.MailHandler{
 		Mailer:   mailer,
 		Reporter: reporter,
@@ -144,6 +184,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	/////////
 	// CSV //
+	log.Println("Load CSV Handler")
 	csv := &csv.CSVHandler{
 		Model: model,
 	}
@@ -151,6 +192,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	////////////
 	// Hooker //
+	log.Println("Load Hooker")
 	hooker := &hooker.Hooker{
 		Model:    model,
 		Runner:   runner,
@@ -161,6 +203,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 
 	core.Config = config
 
+	log.Println("Connect to Database")
 	db, err := sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
 	if err != nil {
 		return nil, err
@@ -171,6 +214,8 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 	}
 
 	core.DB = db
+
+	log.Println("End Config Loading")
 
 	return core, err
 

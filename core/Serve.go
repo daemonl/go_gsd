@@ -10,8 +10,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/daemonl/go_gsd/actions"
-	"github.com/daemonl/go_gsd/file"
-	"github.com/daemonl/go_gsd/minihandlers"
 	"github.com/daemonl/go_gsd/router"
 	"github.com/daemonl/go_gsd/shared"
 	"github.com/daemonl/go_gsd/socket"
@@ -94,29 +92,10 @@ func BuildServer(config *ServerConfig) (IServer, error) {
 
 	setPasswordViewHandler := s.core.TemplateManager.GetSimpleTemplateHandler("set_password.html", nil)
 
-	model := s.core.GetModel()
-	fileHandler := file.GetFileHandler(config.UploadDirectory, model)
-
-	/*
-		oauthHandler := google_auth.OAuthHandler{
-			Config:      config.OAuthConfig,
-			LoginLogout: lilo,
-		}
-		http.HandleFunc("/oauth/return", parser.Wrap(oauthHandler.OauthResponse))
-		http.HandleFunc("/oauth/request", parser.Wrap(oauthHandler.OauthRequest))
-	}*/
-
 	// SET UP URLS
 
 	http.Handle("/socket", socketManager.GetListener())
 	http.HandleFunc("/script/", s.core.runScript)
-
-	if config.DevMode {
-		log.Println("---DEV MODE---")
-		s.router.AddRoute("/app.html", &minihandlers.RawFileHandler{WebRoot: config.WebRoot, Filename: "app_dev.html"})
-		http.Handle("/main.css", &minihandlers.LessHandler{WebRoot: config.WebRoot, Filename: "less/main.less"})
-		http.Handle("/pdf.css", &minihandlers.LessHandler{WebRoot: config.WebRoot, Filename: "less/pdf.less"})
-	}
 
 	s.router.AddRoute("/login", loginViewHandler, "GET")
 	s.router.AddRouteFunc("/oauth_callback", lilo.HandleOauthCallback, "GET")
@@ -133,9 +112,12 @@ func BuildServer(config *ServerConfig) (IServer, error) {
 
 	s.router.AddRoutePathFunc("/csv/%s", s.core.CSVHandler.Handle)
 
-	http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
-	http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
-
+	/*
+		model := s.core.GetModel()
+			fileHandler := file.GetFileHandler(config.UploadDirectory, model)
+			http.HandleFunc("/upload/", parser.Wrap(fileHandler.Upload))
+			http.HandleFunc("/download/", parser.Wrap(fileHandler.Download))
+	*/
 	s.router.Redirect("/", "app.html")
 	s.router.Fallthrough(config.WebRoot)
 

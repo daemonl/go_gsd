@@ -33,7 +33,7 @@ func BasicParser(sessionStore shared.ISessionStore, rawPublicPatterns []string) 
 }
 
 // Wraps a function expecting a Request to make it work with httpResponseWriter, http.Request
-func (parser *Parser) Wrap(handler func(shared.IRequest)) func(w http.ResponseWriter, r *http.Request) {
+func (parser *Parser) Wrap(handler func(shared.IRequest) error) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -66,7 +66,11 @@ func (parser *Parser) Wrap(handler func(shared.IRequest)) func(w http.ResponseWr
 
 			request.Redirect("/login")
 		} else {
-			handler(request)
+			err := handler(request)
+			if err != nil {
+				fmt.Printf("Handler Error: %s\n", err.Error())
+				request.DoError(err)
+			}
 		}
 		return
 	}
@@ -80,7 +84,7 @@ func (parser *Parser) Wrap(handler func(shared.IRequest)) func(w http.ResponseWr
 // (Who am I kidding, I love building frameworks)
 func (parser *Parser) WrapSplit(handlers ...func(shared.IRequest)) func(w http.ResponseWriter, r *http.Request) {
 	methods := []string{"GET", "POST", "PUT", "DELETE"}
-	return parser.Wrap(func(request shared.IRequest) {
+	return parser.Wrap(func(request shared.IRequest) error {
 		for i, m := range methods {
 			if request.Method() == m {
 				if len(handlers) > i && handlers[i] != nil {
@@ -88,9 +92,10 @@ func (parser *Parser) WrapSplit(handlers ...func(shared.IRequest)) func(w http.R
 				} else {
 					//TODO: 404
 				}
-				return
+				return nil
 			}
 		}
+		return nil
 	})
 }
 

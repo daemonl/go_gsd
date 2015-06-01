@@ -40,8 +40,11 @@ func (r *PDFResponse) WriteTo(out io.Writer) error {
 	for {
 		b, err := br.ReadByte()
 		if err != nil {
+			if err == io.EOF {
+				log.Printf("HEADER: %s\n", header.String())
+				break
+			}
 			log.Printf("Error reading pdf header: %s\n", err)
-			log.Printf("HEADER: %s\n", header.String())
 			break
 		}
 		if b == htmlStart {

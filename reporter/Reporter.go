@@ -60,7 +60,7 @@ func (r *Reporter) doSelect(db *sql.DB, rawQueryConditions *databath.RawQueryCon
 	if err != nil {
 		return nil, err
 	}
-	sqlString, parameters, err := query.BuildSelect()
+	sqlString, _, parameters, err := query.BuildSelect()
 	if err != nil {
 		return nil, err
 	}

@@ -31,6 +31,7 @@ func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, erro
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("Decode CSV Query: %s\n", jsonQuery)
 	err = json.Unmarshal([]byte(jsonQuery), &rawQuery)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, erro
 	if err != nil {
 		return nil, err
 	}
-	sqlString, parameters, err := query.BuildSelect()
+	sqlString, _, parameters, err := query.BuildSelect()
 	if err != nil {
 		return nil, err
 	}

@@ -33,7 +33,7 @@ func (r *SelectQuery) Handle(request Request, requestData interface{}) (shared.I
 		return nil, err
 	}
 
-	sqlString, parameters, err := query.BuildSelect()
+	sqlString, countString, parameters, err := query.BuildSelect()
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +43,20 @@ func (r *SelectQuery) Handle(request Request, requestData interface{}) (shared.I
 		return nil, err
 	}
 
+	countRow := db.QueryRow(countString, parameters...)
+	if err != nil {
+		return nil, err
+	}
+	var count uint64
+	countRow.Scan(&count)
+
 	allRows, err := query.RunQueryWithResults(db, sqlString, parameters)
 	if err != nil {
 		return nil, err
 	}
 
-	return JSON(allRows), nil
-
+	return JSON(map[string]interface{}{
+		"rows":  allRows,
+		"count": count,
+	}), nil
 }

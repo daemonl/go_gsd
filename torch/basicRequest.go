@@ -3,12 +3,9 @@ package torch
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/daemonl/go_gsd/shared"
 )
@@ -86,31 +83,6 @@ func (r *basicRequest) ReadJson(into interface{}) error {
 	return dec.Decode(into)
 }
 
-func (r *basicRequest) URLMatch(dest ...interface{}) error {
-	urlParts := strings.Split(r.raw.URL.Path[1:], "/")
-	if len(urlParts) != len(dest) {
-		fmt.Println(urlParts)
-		return errors.New(fmt.Sprintf("URL had %d parameters, expected %d", len(urlParts), len(dest)))
-	}
-	for i, src := range urlParts {
-		dst := dest[i]
-		switch t := dst.(type) {
-		case *string:
-			*t = src
-		case *uint64:
-			srcInt, err := strconv.ParseUint(src, 10, 64)
-			if err != nil {
-				return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to an unsigned integer"))
-			}
-			*t = srcInt
-
-		default:
-			return errors.New(fmt.Sprintf("URL Parameter %d could not be converted to a %T",
-				i+1, t))
-		}
-	}
-	return nil
-}
 func (r *basicRequest) DoError(err error) {
 	log.Println(err)
 	r.Writef("Error: %s", err.Error())

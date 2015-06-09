@@ -2,13 +2,12 @@ package router
 
 import (
 	"fmt"
-	"log"
+	"strconv"
 
 	"github.com/daemonl/go_gsd/shared"
 	//"github.com/daemonl/go_gsd/torch"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 type Router interface {
@@ -65,26 +64,48 @@ func wrapRequest(tr shared.IRequest, route *route) shared.IPathRequest {
 func (wr *WrappedRequest) ScanPath(dests ...interface{}) error {
 	_, r := wr.GetRaw()
 
-	uri := strings.Replace(r.URL.RequestURI(), "/", " ", -1)
-	uri = strings.Replace(uri, ".", " .", -1)
-	format := strings.Replace(wr.route.format, "/", " ", -1)
-	format = strings.Replace(format, "*", "%s", -1)
-	format = strings.Replace(format, ".", " .", -1)
-	_, err := fmt.Sscanf(uri, format, dests...)
-	for _, d := range dests {
-		switch d := d.(type) {
-		case *string:
-			newVal, err := url.QueryUnescape(*d)
-			if err != nil {
-				return err
-			}
-			*d = newVal
-		}
-	}
-	if err != nil {
-		log.Printf("SCAN: %s -> %s\n", uri, format)
-		return fmt.Errorf("scanning '%s' into '%s': %s", r.URL.Path, wr.route.format, err.Error())
+	urlParts := wr.route.re.FindStringSubmatch(r.URL.RequestURI())
+
+	if len(urlParts) != len(dests)+1 {
+		return fmt.Errorf("scanning '%s' into '%s', %d parts, length mismatch", r.URL.Path, len(dests), wr.route.re.String())
 	}
 
-	return err
+	for idx, dest := range dests {
+		raw, err := url.QueryUnescape(urlParts[idx+1])
+		if err != nil {
+			return fmt.Errorf("scanning '%s' into '%s': %s", r.URL.Path, wr.route.re.String(), err.Error())
+		}
+		switch d := dest.(type) {
+		case *string:
+			*d = raw
+		case *uint64:
+			num, err := strconv.ParseUint(raw, 10, 64)
+			if err != nil {
+				return fmt.Errorf("Type conversion error from %s to number: %s", raw, err.Error())
+			}
+			*d = num
+		case *int64:
+			num, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil {
+				return fmt.Errorf("Type conversion error from %s to number: %s", raw, err.Error())
+			}
+			*d = num
+		case *uint32:
+			num, err := strconv.ParseUint(raw, 10, 32)
+			if err != nil {
+				return fmt.Errorf("Type conversion error from %s to number: %s", raw, err.Error())
+			}
+			*d = uint32(num)
+		case *int32:
+			num, err := strconv.ParseInt(raw, 10, 32)
+			if err != nil {
+				return fmt.Errorf("Type conversion error from %s to number: %s", raw, err.Error())
+			}
+			*d = int32(num)
+		default:
+			return fmt.Errorf("Type %T not implemented for URL matching", d)
+		}
+	}
+
+	return nil
 }

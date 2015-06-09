@@ -14,7 +14,7 @@ type IRequest interface {
 	Redirect(to string)
 	DB() (*sql.DB, error)
 	GetContext() IContext
-	URLMatch(dest ...interface{}) error
+	//URLMatch(dest ...interface{}) error
 	DoError(err error)
 	DoErrorf(format string, parameters ...interface{})
 

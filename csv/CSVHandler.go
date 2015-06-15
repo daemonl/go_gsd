@@ -90,9 +90,6 @@ func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, erro
 		if strings.HasPrefix(colName, "#") {
 			continue
 		}
-		if strings.HasSuffix(colName, "id") {
-			continue
-		}
 
 		colNames = append(colNames, colName)
 	}

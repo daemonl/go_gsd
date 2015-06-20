@@ -81,9 +81,6 @@ func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, erro
 
 	colNames := make([]string, 0, 0)
 	for _, colName := range allColNames {
-		if colName == "id" {
-			continue
-		}
 		if strings.HasPrefix(colName, "-") {
 			continue
 		}

@@ -57,6 +57,8 @@ type ServerConfig struct {
 }
 
 func FileNameToObject(filename string, object interface{}) error {
+	filename = os.ExpandEnv(filename)
+	fmt.Println(filename)
 	jsonFile, err := os.Open(filename)
 	defer jsonFile.Close()
 	if err != nil {

@@ -251,12 +251,14 @@ func (rc *RunContext) SqlQuery(call otto.FunctionCall) otto.Value {
 
 	res, err := rc.db.Query(sqlString, sqlArguments...)
 	if err != nil {
+		log.Printf("OTTO SQL Error: %s\n", err.Error())
 		return rc.Err(err.Error())
 	}
 	defer res.Close()
 
 	cols, err := res.Columns()
 	if err != nil {
+		log.Printf("OTTO SQL Error: %s\n", err.Error())
 		return rc.Err(err.Error())
 	}
 
@@ -281,12 +283,14 @@ func (rc *RunContext) SqlQuery(call otto.FunctionCall) otto.Value {
 			} else {
 				oval, err := otto.ToValue(*(rowInterfaces[i]))
 				if err != nil {
+					log.Printf("OTTO SQL Error: %s\n", err.Error())
 					return rc.Err(err.Error())
 				}
 				ottoVals[i] = oval
 			}
 
 		}
+		log.Printf("OTTO SQL Row %v\n", ottoVals)
 		onRowCallback.Call(otto.NullValue(), ottoVals...)
 	}
 

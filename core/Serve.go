@@ -155,13 +155,8 @@ func (s *Server) Serve() error {
 
 	signal.Notify(sigChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 
-	for {
-		sigVal := <-sigChan
-		log.Printf("SIG %s\n", sigVal.String())
-		if sigVal == os.Interrupt {
-			break
-		}
-	}
+	sigVal := <-sigChan
+	log.Printf("SIG %s\n", sigVal.String())
 
 	log.Printf("=== SHUTDOWN INITIATED ===")
 

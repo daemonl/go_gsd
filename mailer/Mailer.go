@@ -142,7 +142,9 @@ func (s *Mailer) Send(email *shared.Email) error {
 
 	if s.Config.ServerPort != "9999" {
 		log.Println("Start TLS")
-		tlsConfig := tls.Config{}
+		tlsConfig := tls.Config{
+			ServerName: s.Config.ServerAddress,
+		}
 		if err = c.StartTLS(&tlsConfig); err != nil {
 			err = fmt.Errorf("SMTP TLS Error: %s", err.Error())
 			log.Println(err)

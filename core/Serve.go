@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"syscall"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -152,7 +153,7 @@ func (s *Server) Serve() error {
 
 	sigChan := make(chan os.Signal)
 
-	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	for {
 		sigVal := <-sigChan

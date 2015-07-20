@@ -57,6 +57,7 @@ func (ss *inMemorySessionStore) DumpSessions() {
 	if ss.dumpFile == nil {
 		return
 	}
+	log.Println("=== DUMP SESSIONS ===")
 	w, err := os.Create(*ss.dumpFile)
 	if err != nil {
 		log.Printf("Error dumping sessions: %s\n", err.Error())
@@ -67,8 +68,11 @@ func (ss *inMemorySessionStore) DumpSessions() {
 		sUser := session.UserID()
 		if sKey != nil && sUser != nil {
 			w.Write([]byte(fmt.Sprintf("%s|%d\n", *sKey, *sUser)))
+			log.Println("Session for %s\n", *sUser)
 		}
+
 	}
+	log.Println("=== END SESSIONS ===")
 }
 
 func (ss *inMemorySessionStore) loadSessions(r io.Reader, loadUser func(uint64) (shared.IUser, error)) {

@@ -68,7 +68,7 @@ func (ss *inMemorySessionStore) DumpSessions() {
 		sUser := session.UserID()
 		if sKey != nil && sUser != nil {
 			w.Write([]byte(fmt.Sprintf("%s|%d\n", *sKey, *sUser)))
-			log.Println("Session for %s\n", *sUser)
+			log.Printf("Session for user %d\n", *sUser)
 		}
 
 	}

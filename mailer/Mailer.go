@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"mime/multipart"
 	"net/smtp"
+	"net/textproto"
 	"strings"
 
 	"github.com/daemonl/go_gsd/shared"
@@ -21,7 +23,6 @@ type SmtpConfig struct {
 	ServerPort         string  `json:"port"`
 	Username           string  `json:"username"`
 	Password           string  `json:"password"`
-	DefaultSender      string  `json:"defaultSender"`
 	DevOverrideAddress *string `json:"devOverrideAddress"`
 }
 
@@ -30,7 +31,7 @@ func (s *Mailer) SendSimple(to string, subject string, body string) {
 		Recipient: to,
 		Subject:   subject,
 		HTML:      body,
-		Sender:    s.Config.DefaultSender,
+		Sender:    s.Config.Username,
 	}
 	s.Send(email)
 }
@@ -71,7 +72,7 @@ func (s *Mailer) SendResponse(response shared.IResponse, recipientsRaw string, n
 	for _, recipient := range recipients {
 
 		email := &shared.Email{
-			Sender:    s.Config.DefaultSender,
+			Sender:    s.Config.Username,
 			Recipient: recipient,
 			Subject:   subject,
 			HTML:      html,
@@ -92,25 +93,6 @@ func (s *Mailer) Send(email *shared.Email) error {
 	if s.Config.DevOverrideAddress != nil && len(*s.Config.DevOverrideAddress) > 0 {
 		email.Recipient = *s.Config.DevOverrideAddress
 	}
-
-	recipients := make([]string, 1, 1)
-	recipients[0] = email.Recipient
-
-	headers := map[string]string{
-		"To":           email.Recipient,
-		"From":         email.Sender,
-		"Reply-To":     email.Sender,
-		"Subject":      email.Subject,
-		"MIME-Version": "1.0",
-		"Content-Type": "text/html",
-	}
-
-	buf := bytes.NewBuffer(nil)
-	for k, v := range headers {
-		buf.WriteString(fmt.Sprintf("%s: %s\n", k, v))
-	}
-	buf.WriteString("\n\n")
-	buf.WriteString(email.HTML)
 
 	log.Printf("Dial %s:%s", s.Config.ServerAddress, s.Config.ServerPort)
 
@@ -178,12 +160,36 @@ func (s *Mailer) Send(email *shared.Email) error {
 
 	log.Println("Data")
 
-	w, err := c.Data()
+	writer, err := c.Data()
 	if err != nil {
 		return fmt.Errorf("SMPT Data Error: %s", err.Error())
 	}
-	buf.WriteTo(w)
-	w.Close()
+
+	mw := multipart.NewWriter(writer)
+
+	headers := map[string]string{
+		"From":         email.Sender,
+		"To":           email.Recipient,
+		"Subject":      email.Subject,
+		"MIME-Version": "1.0",
+		"Content-Type": `multipart/mixed; boundary="` + mw.Boundary() + `"`,
+	}
+
+	for key, val := range headers {
+		fmt.Fprintf(writer, "%s: %s\n", key, val)
+	}
+	fmt.Fprintln(writer, "")
+
+	htmlHeader := textproto.MIMEHeader{}
+	htmlHeader.Add("Content-Type", "text/html")
+	htmlPart, err := mw.CreatePart(htmlHeader)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(htmlPart, email.HTML)
+
+	mw.Close()
+	writer.Close()
 	c.Reset()
 	log.Println("DONE")
 

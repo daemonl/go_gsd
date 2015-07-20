@@ -16,12 +16,13 @@ type Mailer struct {
 }
 
 type SmtpConfig struct {
-	ServerAddress string `json:"serverAddress"`
-	EhloAddress   string `json:"ehloAddress"`
-	ServerPort    string `json:"port"`
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	DefaultSender string `json:"defaultSender"`
+	ServerAddress      string  `json:"serverAddress"`
+	EhloAddress        string  `json:"ehloAddress"`
+	ServerPort         string  `json:"port"`
+	Username           string  `json:"username"`
+	Password           string  `json:"password"`
+	DefaultSender      string  `json:"defaultSender"`
+	DevOverrideAddress *string `json:"devOverrideAddress"`
 }
 
 func (s *Mailer) SendSimple(to string, subject string, body string) {
@@ -88,8 +89,13 @@ func (s *Mailer) SendResponse(response shared.IResponse, recipientsRaw string, n
 
 func (s *Mailer) Send(email *shared.Email) error {
 
+	if s.Config.DevOverrideAddress != nil && len(*s.Config.DevOverrideAddress) > 0 {
+		email.Recipient = *s.Config.DevOverrideAddress
+	}
+
 	recipients := make([]string, 1, 1)
 	recipients[0] = email.Recipient
+
 	headers := map[string]string{
 		"To":           email.Recipient,
 		"From":         email.Sender,
@@ -138,13 +144,17 @@ func (s *Mailer) Send(email *shared.Email) error {
 		log.Println("Start TLS")
 		tlsConfig := tls.Config{}
 		if err = c.StartTLS(&tlsConfig); err != nil {
-			return fmt.Errorf("SMTP TLS Error: %s", err.Error)
+			err = fmt.Errorf("SMTP TLS Error: %s", err.Error)
+			log.Println(err)
+			return err
 		}
 
 		auth := smtp.PlainAuth("", s.Config.Username, s.Config.Password, s.Config.ServerAddress)
 
 		if err = c.Auth(auth); err != nil {
-			return fmt.Errorf("SMTP Auth error: %s", err.Error())
+			err = fmt.Errorf("SMTP Auth error: %s", err.Error())
+			log.Println(err)
+			return err
 		}
 
 	}

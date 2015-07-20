@@ -144,7 +144,7 @@ func (s *Mailer) Send(email *shared.Email) error {
 		log.Println("Start TLS")
 		tlsConfig := tls.Config{}
 		if err = c.StartTLS(&tlsConfig); err != nil {
-			err = fmt.Errorf("SMTP TLS Error: %s", err.Error)
+			err = fmt.Errorf("SMTP TLS Error: %s", err.Error())
 			log.Println(err)
 			return err
 		}

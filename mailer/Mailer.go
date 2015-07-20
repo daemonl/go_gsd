@@ -109,6 +109,7 @@ func (s *Mailer) Send(email *shared.Email) error {
 	for k, v := range headers {
 		buf.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 	}
+	buf.WriteString("\n\n")
 	buf.WriteString(email.HTML)
 
 	log.Printf("Dial %s:%s", s.Config.ServerAddress, s.Config.ServerPort)

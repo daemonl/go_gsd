@@ -28,6 +28,7 @@ type Server struct {
 
 type IServer interface {
 	Serve() error
+	GetCore() *GSDCore
 	AddRoute(format string, handler shared.IHandler, methods ...string) error
 	AddRouteFunc(format string, handlerFunc func(shared.IRequest) (shared.IResponse, error), methods ...string) error
 	AddRoutePathFunc(format string, handlerPathFunc func(shared.IPathRequest) (shared.IResponse, error), methods ...string) error
@@ -41,7 +42,9 @@ func Serve(config *ServerConfig) error {
 	}
 	return server.Serve()
 }
-
+func (s *Server) GetCore() *GSDCore {
+	return s.core
+}
 func BuildServer(config *ServerConfig) (IServer, error) {
 
 	s := &Server{

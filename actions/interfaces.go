@@ -2,7 +2,9 @@ package actions
 
 import (
 	"database/sql"
+
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/components"
 	"github.com/daemonl/go_gsd/shared"
 )
 
@@ -20,9 +22,6 @@ type Handler interface {
 }
 
 type Core interface {
-	DoHooksPreAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
-	DoHooksPostAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
+	components.Core
 	GetModel() *databath.Model
-	RunDynamic(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error)
-	SendMail(to string, subject string, body string)
 }

@@ -15,12 +15,12 @@ type GSDCore struct {
 
 	DB *sql.DB
 
-	Hooker   components.Hooker
-	Mailer   components.Mailer
-	Reporter components.Reporter
-	PDFer    components.PDFer
-	Runner   components.Runner
-	Xero     components.Xero
+	components.Hooker
+	components.Mailer
+	components.Reporter
+	components.PDFer
+	components.Runner
+	components.Xero
 
 	CSVHandler  shared.IPathHandler
 	PDFHandler  shared.IPathHandler
@@ -42,22 +42,6 @@ func (core *GSDCore) UsersDatabase() (*sql.DB, error) {
 	return sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
 }
 
-func (core *GSDCore) DoHooksPreAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession) {
-	core.Hooker.DoPreHooks(db, as, session)
-}
-
-func (core *GSDCore) DoHooksPostAction(db *sql.DB, as *shared.ActionSummary, session shared.ISession) {
-	core.Hooker.DoPostHooks(db, as, session)
-}
-
 func (core *GSDCore) GetModel() *databath.Model {
 	return core.Model
-}
-
-func (core *GSDCore) RunDynamic(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error) {
-	return core.Runner.Run(filename, parameters, db)
-}
-
-func (core *GSDCore) SendMail(to string, subject string, body string) {
-	core.Mailer.SendSimple(to, subject, body)
 }

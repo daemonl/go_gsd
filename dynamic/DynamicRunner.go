@@ -18,7 +18,7 @@ type DynamicRunner struct {
 	Xero          components.Xero
 }
 
-func (dr *DynamicRunner) Run(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error) {
+func (dr *DynamicRunner) RunScript(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error) {
 
 	log.Println("OTTO FUNC START")
 	file, err := os.Open(dr.BaseDirectory + filename)

@@ -15,22 +15,6 @@ type dynamicRequest struct {
 	Parameters   map[string]interface{} `json:"parameters"`
 }
 
-/*
-func GetDynamicHandlerFromCore(core *GSDCore) *DynamicHandler {
-
-	runner := &dynamic.DynamicRunner{
-		DataBath:      core.Bath,
-		BaseDirectory: core.Config.ScriptDirectory, // "/home/daemonl/schkit/impl/pov/script/",
-		SendMail:      core.SendMail,
-	}
-
-	return &DynamicHandler{
-		Core:   core,
-		Runner: runner,
-	}
-}
-*/
-
 func (q *DynamicHandler) RequestDataPlaceholder() interface{} {
 	r := dynamicRequest{}
 	return &r
@@ -72,7 +56,7 @@ func (r *DynamicHandler) Handle(request Request, requestData interface{}) (share
 		}
 	}
 
-	resp, err := r.Core.RunDynamic(fnConfig.Filename, cqr.Parameters, db)
+	resp, err := r.Core.RunScript(fnConfig.Filename, cqr.Parameters, db)
 	if err != nil {
 		return nil, err
 	}

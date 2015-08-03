@@ -11,8 +11,9 @@ import (
 )
 
 type csvResponse struct {
-	rows         []map[string]interface{}
-	filename     string
+	rows     []map[string]interface{}
+	filename string
+	//fields   []CSVField
 	colNames     []string
 	mappedFields map[string]*databath.Field
 }

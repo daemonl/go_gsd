@@ -95,7 +95,7 @@ func (report *Report) PrepareWriter() (*view.HTMLTemplateWriter, error) {
 			"requestQuery": queryMap,
 			"queries":      emailParameters,
 		}
-		javascriptData, err = report.Core.Runner.Run(report.Config.ScriptName, scriptParameters, db)
+		javascriptData, err = report.Core.Runner.RunScript(report.Config.ScriptName, scriptParameters, db)
 
 		if err != nil {
 			return nil, err

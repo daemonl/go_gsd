@@ -8,13 +8,13 @@ import (
 
 type Reporter interface {
 	GetReportHTMLWriter(name string, pk uint64, session shared.ISession) (shared.IResponse, error)
-	Handle(shared.IPathRequest) (shared.IResponse, error)
+	HandleReportRequest(shared.IPathRequest) (shared.IResponse, error)
 }
 
 type Mailer interface {
-	SendSimple(to string, subject string, body string)
-	Send(email *shared.Email) error
-	SendResponse(response shared.IResponse, recipient string, notes string) error
+	SendMailSimple(to string, subject string, body string)
+	SendMail(email *shared.Email) error
+	SendMailFromResponse(response shared.IResponse, recipient string, notes string) error
 }
 
 type PDFer interface {
@@ -22,14 +22,30 @@ type PDFer interface {
 }
 
 type Runner interface {
-	Run(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error)
+	RunScript(filename string, parameters map[string]interface{}, db *sql.DB) (map[string]interface{}, error)
 }
 
 type Hooker interface {
-	DoPreHooks(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
-	DoPostHooks(db *sql.DB, as *shared.ActionSummary, session shared.ISession)
+	DoPreHooks(hc *HookContext)
+	DoPostHooks(hc *HookContext)
 }
 
 type Xero interface {
-	Post(collection string, data interface{}, params ...string) (string, error)
+	XeroPost(collection string, data interface{}, params ...string) (string, error)
+}
+
+type Core interface {
+	Reporter
+	Mailer
+	PDFer
+	Runner
+	Hooker
+	Xero
+}
+
+type HookContext struct {
+	DB            *sql.DB
+	ActionSummary *shared.ActionSummary
+	Session       shared.ISession
+	Core          Core
 }

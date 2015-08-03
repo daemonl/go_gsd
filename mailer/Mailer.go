@@ -26,14 +26,14 @@ type SmtpConfig struct {
 	DevOverrideAddress *string `json:"devOverrideAddress"`
 }
 
-func (s *Mailer) SendSimple(to string, subject string, body string) {
+func (s *Mailer) SendMailSimple(to string, subject string, body string) {
 	email := &shared.Email{
 		Recipient: to,
 		Subject:   subject,
 		HTML:      body,
 		Sender:    s.Config.Username,
 	}
-	s.Send(email)
+	s.SendMail(email)
 }
 
 func dropLine(in *string) (string, error) {
@@ -48,7 +48,7 @@ func dropLine(in *string) (string, error) {
 	return parts[0], nil
 }
 
-func (s *Mailer) SendResponse(response shared.IResponse, recipientsRaw string, notes string) error {
+func (s *Mailer) SendMailFromResponse(response shared.IResponse, recipientsRaw string, notes string) error {
 	mailBuffer := &bytes.Buffer{}
 	response.WriteTo(mailBuffer)
 	html := mailBuffer.String()
@@ -78,7 +78,7 @@ func (s *Mailer) SendResponse(response shared.IResponse, recipientsRaw string, n
 			HTML:      html,
 		}
 
-		err := s.Send(email)
+		err := s.SendMail(email)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func (s *Mailer) SendResponse(response shared.IResponse, recipientsRaw string, n
 
 }
 
-func (s *Mailer) Send(email *shared.Email) error {
+func (s *Mailer) SendMail(email *shared.Email) error {
 
 	if s.Config.DevOverrideAddress != nil && len(*s.Config.DevOverrideAddress) > 0 {
 		email.Recipient = *s.Config.DevOverrideAddress

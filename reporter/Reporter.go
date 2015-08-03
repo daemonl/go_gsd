@@ -17,7 +17,7 @@ type Reporter struct {
 	Reports     map[string]ReportConfig
 }
 
-func (r *Reporter) Handle(request shared.IPathRequest) (shared.IResponse, error) {
+func (r *Reporter) HandleReportRequest(request shared.IPathRequest) (shared.IResponse, error) {
 
 	var name string
 	var pk uint64

@@ -31,7 +31,7 @@ func (core *GSDCore) runScript(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ERROR"))
 		return
 	}
-	_, err = core.Runner.Run(script+".js", map[string]interface{}{"path": parts[2:]}, db)
+	_, err = core.Runner.RunScript(script+".js", map[string]interface{}{"path": parts[2:]}, db)
 	if err != nil {
 		log.Println(err)
 		w.Write([]byte("ERROR"))

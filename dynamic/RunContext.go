@@ -73,7 +73,7 @@ func (rc *RunContext) RunScript(call otto.FunctionCall) otto.Value {
 	}
 	parameters := map[string]interface{}{}
 	json.Unmarshal([]byte(parametersRaw), &parameters)
-	result, err := rc.runner.Run(script, parameters, rc.db)
+	result, err := rc.runner.RunScript(script, parameters, rc.db)
 	if err != nil {
 		log.Println(err.Error())
 		return rc.Err(err.Error())
@@ -128,7 +128,7 @@ func (rc *RunContext) SendMail(call otto.FunctionCall) otto.Value {
 		return rc.Err(err.Error())
 	}
 
-	rc.runner.Mailer.SendSimple(to, subject, body)
+	rc.runner.Mailer.SendMailSimple(to, subject, body)
 
 	return otto.NullValue()
 
@@ -199,7 +199,7 @@ func (rc *RunContext) XERO_Post(call otto.FunctionCall) otto.Value {
 
 	var resBody interface{}
 
-	resBody, err = rc.runner.Xero.Post(collectionName, jsonString)
+	resBody, err = rc.runner.Xero.XeroPost(collectionName, jsonString)
 
 	if err != nil {
 		resp["status"] = "ERROR"

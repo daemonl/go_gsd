@@ -1,10 +1,10 @@
 package socket
 
 import (
-	"golang.org/x/net/websocket"
 	"database/sql"
 	"encoding/json"
 	"github.com/daemonl/go_gsd/shared"
+	"golang.org/x/net/websocket"
 	"log"
 )
 
@@ -70,7 +70,6 @@ func (os *OpenSocket) SendObject(functionName string, responseId string, object 
 		return
 	}
 	m := StringSocketMessage{FunctionName: functionName, ResponseId: responseId, Message: string(bytes)}
-	log.Printf("S:%d SEND %s %s\n", os.UID, functionName, responseId)
 	os.Sender <- &m
 }
 func (os *OpenSocket) SendRaw(sm SocketMessage) {

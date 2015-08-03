@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/components"
 	"github.com/daemonl/go_gsd/shared"
 )
 
@@ -43,15 +44,21 @@ func (r *UpdateQuery) Handle(request Request, requestData interface{}) (shared.I
 	if err != nil {
 		return nil, err
 	}
-	if updateRequest.Conditions.Pk != nil {
-		actionSummary := &shared.ActionSummary{
-			UserId:     *session.UserID(),
-			Action:     "update",
-			Collection: *updateRequest.Conditions.Collection,
-			Pk:         *updateRequest.Conditions.Pk,
-			Fields:     updateRequest.Changeset,
+	var hookContext *components.HookContext
+	if updateRequest.Conditions.Pk != nil { // Not for Bulk requests
+		hookContext = &components.HookContext{
+			DB: db,
+			ActionSummary: &shared.ActionSummary{
+				UserId:     *session.UserID(),
+				Action:     "update",
+				Collection: *updateRequest.Conditions.Collection,
+				Pk:         *updateRequest.Conditions.Pk,
+				Fields:     updateRequest.Changeset,
+			},
+			Session: request.Session(),
+			Core:    r.Core,
 		}
-		r.Core.DoHooksPreAction(db, actionSummary, session)
+		r.Core.DoPreHooks(hookContext)
 	}
 	sqlString, parameters, err := query.BuildUpdate(updateRequest.Changeset)
 	if err != nil {
@@ -70,16 +77,9 @@ func (r *UpdateQuery) Handle(request Request, requestData interface{}) (shared.I
 	}
 
 	go request.Broadcast("update", updateObject)
-	if updateRequest.Conditions.Pk != nil {
-		actionSummary := &shared.ActionSummary{
-			UserId:     *session.UserID(),
-			Action:     "update",
-			Collection: *updateRequest.Conditions.Collection,
-			Pk:         *updateRequest.Conditions.Pk,
-			Fields:     updateRequest.Changeset,
-		}
-		go r.Core.DoHooksPostAction(db, actionSummary, session)
 
+	if hookContext != nil { // Not for Bulk Requests, as above
+		go r.Core.DoPostHooks(hookContext)
 	}
 	return JSON(map[string]int64{"affected": rows}), nil
 }

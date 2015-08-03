@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/daemonl/databath"
+	"github.com/daemonl/go_gsd/components"
 	"github.com/daemonl/go_gsd/shared"
 )
 
@@ -55,15 +56,20 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared
 		return nil, err
 	}
 
-	actionSummary := &shared.ActionSummary{
-		UserId:     *session.UserID(),
-		Action:     "create",
-		Collection: createRequest.Collection,
-		Pk:         0,
-		Fields:     createRequest.Values,
+	hookContext := &components.HookContext{
+		DB: db,
+		ActionSummary: &shared.ActionSummary{
+			UserId:     *session.UserID(),
+			Action:     "create",
+			Collection: createRequest.Collection,
+			Pk:         0,
+			Fields:     createRequest.Values,
+		},
+		Session: request.Session(),
+		Core:    r.Core,
 	}
 
-	r.Core.DoHooksPreAction(db, actionSummary, request.Session())
+	r.Core.DoPreHooks(hookContext)
 
 	sqlString, parameters, err := query.BuildInsert(createRequest.Values)
 	if err != nil {
@@ -79,7 +85,7 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared
 	if err != nil {
 		return nil, err
 	}
-	actionSummary.Pk = uint64(id)
+	hookContext.ActionSummary.Pk = uint64(id)
 	result := createResult{
 		Status:   "OK",
 		Message:  "Success",
@@ -92,7 +98,7 @@ func (r *CreateQuery) Handle(request Request, requestObject interface{}) (shared
 		"object":     createRequest.Values,
 	}
 
-	go r.Core.DoHooksPostAction(db, actionSummary, request.Session())
+	go r.Core.DoPostHooks(hookContext) //db, actionSummary, request.Session())
 	go request.Broadcast("create", createObject)
 	return JSON(result), nil
 }

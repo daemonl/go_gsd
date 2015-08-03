@@ -16,6 +16,11 @@ type CSVHandler struct {
 	Model *databath.Model
 }
 
+type CSVField struct {
+	Title  string
+	SQLCol string
+}
+
 func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, error) {
 
 	var queryStringQuery string
@@ -66,6 +71,19 @@ func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, erro
 
 	filename := *rawQuery.Collection + "-" + time.Now().Format("2006-01-02") + ".csv"
 
+	/*
+		fieldset := h.Model.Collections[*rawQuery.Collection].FieldSets[*rawQuery.Fieldset]
+
+		csvFields := make([]CSVField, len(fieldset), len(fieldset))
+
+		for i, fieldDef := range fieldset {
+			csvFields[i] = CSVField{
+				Title:  fieldDef.GetTitle(),
+				SQLCol: fieldDef.GetSQLColName(),
+			}
+
+		}*/
+
 	mappedFields, err := query.GetFields()
 
 	if err != nil {
@@ -92,8 +110,9 @@ func (h *CSVHandler) Handle(request shared.IPathRequest) (shared.IResponse, erro
 	}
 
 	resp := &csvResponse{
-		rows:         rows,
-		filename:     filename,
+		rows:     rows,
+		filename: filename,
+		//fields:   csvFields,
 		colNames:     colNames,
 		mappedFields: mappedFields,
 	}

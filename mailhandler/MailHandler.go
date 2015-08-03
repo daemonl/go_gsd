@@ -29,7 +29,7 @@ func (h *MailHandler) Handle(request shared.IPathRequest) (shared.IResponse, err
 		return nil, err
 	}
 
-	err = h.Mailer.SendResponse(report, recipientRaw, notes)
+	err = h.Mailer.SendMailFromResponse(report, recipientRaw, notes)
 
 	if err != nil {
 		return nil, err

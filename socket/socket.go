@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/websocket"
 	"github.com/daemonl/go_gsd/actions"
 	"github.com/daemonl/go_gsd/shared"
+	"golang.org/x/net/websocket"
 )
 
 var nextUID uint = 0
@@ -147,7 +147,6 @@ func (m *Manager) listener(ws *websocket.Conn) {
 			log.Printf("S:%d Error reading line: %s\n", os.UID, err.Error())
 			return
 		}
-		log.Printf("S:%d IN: %s", os.UID, line)
 		os.session.UpdateLastRequest()
 		m.parse(line, &os)
 	}
@@ -163,6 +162,10 @@ func (m *Manager) parse(raw string, os *OpenSocket) {
 	}
 	functionName := parts[0]
 	responseId := parts[1]
+
+	if functionName != "ping" {
+		log.Printf("S:%d IN: %s", os.UID, raw)
+	}
 
 	handlerObj, ok := m.handlers[functionName]
 	if !ok {
@@ -184,7 +187,9 @@ func (m *Manager) parse(raw string, os *OpenSocket) {
 		os.SendError(responseId, err)
 		return
 	}
-
+	if functionName != "ping" {
+		log.Printf("S:%d SEND %s %s\n", os.UID, functionName, responseId)
+	}
 	os.SendObject("response", responseId, resp)
 
 }

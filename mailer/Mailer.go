@@ -91,6 +91,7 @@ func (s *Mailer) SendMailFromResponse(response shared.IResponse, recipientsRaw s
 func (s *Mailer) SendMail(email *shared.Email) error {
 
 	if s.Config.DevOverrideAddress != nil && len(*s.Config.DevOverrideAddress) > 0 {
+		email.HTML = email.Recipient + "<hr>" + email.HTML
 		email.Recipient = *s.Config.DevOverrideAddress
 	}
 

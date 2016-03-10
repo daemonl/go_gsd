@@ -206,7 +206,7 @@ func (config *ServerConfig) GetCore() (core *GSDCore, err error) {
 	core.Config = config
 
 	log.Println("Connect to Database")
-	db, err := sql.Open(core.Config.Database.Driver, core.Config.Database.DataSourceName)
+	db, err := sql.Open(core.Config.Database.Driver, os.ExpandEnv(core.Config.Database.DataSourceName))
 	if err != nil {
 		return nil, err
 	}
